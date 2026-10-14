@@ -19,8 +19,10 @@ Claude Code(Windows)용 MCP 서버입니다. 컨텍스트 압축은 그대로 �
 요구 사항: Windows 10/11 x64, Claude Code, Git, CPython 3(시험한 판 3.11; Microsoft Store 의 `python` 스텁은 안 됨).
 
 ```bash
-git clone <저장소 주소> vrs-lib
+git clone https://github.com/raspie10032/vrs-lib.git vrs-lib
 ```
+
+비공개 저장소라 클론하려면 이 저장소에 접근 권한이 있는 GitHub 계정으로 로그인돼 있어야 합니다(`gh auth login` 이나 Git Credential Manager).
 
 ```bash
 cd vrs-lib
