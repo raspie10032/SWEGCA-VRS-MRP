@@ -20,7 +20,7 @@ Claude Code 에서:
 claude plugin install vrs-lib --marketplace raspie10032/vrs-lib
 ```
 
-- 비공개 저장소라서, 이 PC 의 git 이 GitHub 에 로그인돼 있어야 합니다(`gh auth login` 뒤 `gh auth setup-git`, 또는 Git Credential Manager).
+- 공개 저장소라 GitHub 로그인 없이 설치됩니다. Git 만 있으면 됩니다.
 - 설치 뒤 **새로 연 세션부터** 적용됩니다.
 - 데스크톱 앱에서는 **+ → Plugins** 에서 관리합니다.
 - 업데이트는 `/plugin` 메뉴에서, 제거는 `claude plugin uninstall vrs-lib` 로 합니다. 제거하면 플러그인 데이터 폴더(색인)도 지워집니다. 남기려면 `--keep-data` 를 붙입니다.
