@@ -1,7 +1,8 @@
 {
   "name": "vrs-lib",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Restores the exact pre-compaction originals (user utterances and answers) after Claude Code compacts the context. Windows, no Python or installer needed.",
   "author": { "name": "raspie10032" },
-  "repository": "https://github.com/raspie10032/vrs-lib"
+  "repository": "https://github.com/raspie10032/vrs-lib",
+  "license": "MIT AND MPL-2.0"
 }

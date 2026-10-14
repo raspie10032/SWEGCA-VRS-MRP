@@ -1,0 +1,8 @@
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+Every file in this directory and its subdirectories is a C++ port derived from
+SWEGCA-Architecture (https://github.com/raspie10032/SWEGCA-Architecture), which
+is licensed under MPL-2.0. The full license text is in LICENSES/MPL-2.0.txt at
+the repository root.

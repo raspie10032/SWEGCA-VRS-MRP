@@ -1,4 +1,4 @@
-# vrs-lib 1.1.0
+# vrs-lib 1.1.1
 
 Claude Code(Windows)용 플러그인입니다. 컨텍스트 압축은 그대로 두고, 압축 뒤에 **압축 전 원문**(사용자 발화와 답)을 바이트 그대로 돌려주는 데만 씁니다.
 
@@ -76,3 +76,7 @@ claude plugin install vrs-lib --marketplace raspie10032/vrs-lib
 - **다른 데몬이 먼저 떠 있으면**: 파이프 이름이 사용자마다 하나라서, 예전 수동 설치(1.0.0)의 데몬이 떠 있으면 플러그인이 그 데몬에 붙습니다. 1.0.0 을 쓰던 PC 는 예전 MCP·훅을 지우고 `Get-Process vrs_ccd | Stop-Process` 로 데몬을 끝낸 뒤 새 세션을 엽니다.
 - **업데이트 직후**: 떠 있는 데몬은 이전 판 폴더의 실행 파일로 계속 돕니다. 새 판 데몬으로 바꾸려면 위와 같이 데몬을 끝냅니다.
 - 세션을 넘는 회수와 질의 회수는 이 판에 없습니다.
+
+## 라이선스
+
+**MIT AND MPL-2.0** 입니다. MIT(`LICENSE`)가 기본이고, `source/native/libvrs/swegca_cpp/` 만 SWEGCA-Architecture 에서 옮긴 코드라 MPL-2.0(`LICENSES/MPL-2.0.txt`)입니다. 경계는 `NOTICE.md` 에, 제3자 고지(mimalloc, MIT)는 `THIRD_PARTY_NOTICES.md` 에 있습니다.
