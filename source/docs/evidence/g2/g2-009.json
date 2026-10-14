@@ -1,0 +1,232 @@
+{
+ "id": "g2-009",
+ "branch": "ng2",
+ "tests": {
+  "build": {
+   "pass": true
+  },
+  "static": {
+   "pass": true,
+   "forbidden_symbols": [],
+   "lock_constructs": [],
+   "seconds": 0.2
+  },
+  "n1_m1": {
+   "batch": {
+    "cells_hash": "280399ba4c7e1040",
+    "ref_cells_hash": "280399ba4c7e1040",
+    "rc_list_equal": true,
+    "json_diff": [],
+    "json_diff_n": 0,
+    "ready_ms": 6422.2
+   },
+   "reopen": {
+    "cells_hash": "280399ba4c7e1040",
+    "ref_cells_hash": "280399ba4c7e1040",
+    "rc_list_equal": true,
+    "json_diff": [],
+    "json_diff_n": 0,
+    "ready_ms": 287.4
+   },
+   "pass": true,
+   "seconds": 11.2
+  },
+  "n1_kx2": {
+   "batch": {
+    "cells_hash": "03085bfb04024542",
+    "ref_cells_hash": "03085bfb04024542",
+    "rc_list_equal": true,
+    "json_diff": [],
+    "json_diff_n": 0,
+    "ready_ms": 5472.0
+   },
+   "reopen": {
+    "cells_hash": "03085bfb04024542",
+    "ref_cells_hash": "03085bfb04024542",
+    "rc_list_equal": true,
+    "json_diff": [],
+    "json_diff_n": 0,
+    "ready_ms": 671.6
+   },
+   "pass": true,
+   "seconds": 33.0
+  },
+  "w3": {
+   "idem": {
+    "rc": 0,
+    "tail": "in a row: the assembled answer equals the single insert's byte for byte (64394 bytes)\nPASS c: open on the finished file, no shard (full parse)\nPASS c: parse from scratch == insert-built tables (session hash)\nPASS c: items / turns equal\nPASS c: item / meta / task_started / turn records: same multiset as the insert-built shard\nPASS c: cells from a parse from scratch == insert-built cells\nPASS d: open on the insert-built shard\nPASS d: shard accepted (loaded 1, rebuilt 0)\nPASS d: restored tables == insert-built tables (session hash)\nPASS d: restart appended nothing to the shard\nidem: 0 failure(s)\n"
+   },
+   "replay": {
+    "rc": 0,
+    "tail": "22 (prefix of 722 of 788 lines, rest appended, restart): tables and shard == full parse\nPASS cut787 (prefix of 787 of 788 lines, rest appended, restart): tables and shard == full parse\nPASS cut788 (prefix of 788 of 788 lines, rest appended, restart): tables and shard == full parse\nreplay: 40 of 40 cut points equal to the full parse\nPASS torn shard: open\nPASS torn shard (last record cut): tables == full parse (loaded 1, rebuilt 0, damaged records 1)\nPASS damaged shard: open\nPASS damaged shard (40 bytes flipped): tables == full parse (loaded 1, rebuilt 0, damaged records 1)\nreplay: 0 failure(s)\n"
+   },
+   "ooo": {
+    "rc": 0,
+    "tail": "PASS open\nPASS reverse order (first 60 lines backwards, file present): tables == in-order parse\nPASS every line applied exactly once (788 of 788)\nooo: 0 failure(s)\n"
+   },
+   "pass": true,
+   "seconds": 5.3
+  },
+  "w4": {
+   "ordered_rc": 0,
+   "shuffle_same": [
+    true,
+    true,
+    true,
+    true,
+    true
+   ],
+   "pass": true,
+   "seconds": 3.6
+  },
+  "w5": {
+   "pass": true,
+   "result": {
+    "count": 200,
+    "termination": "TerminateProcess",
+    "reopen_success": 200,
+    "source_equal": true,
+    "finish": {
+     "rc": 0,
+     "ready": true,
+     "stats": [
+      9532178698350303309,
+      7865,
+      3221,
+      185,
+      3,
+      3,
+      0
+     ],
+     "stderr": ""
+    },
+    "fresh": {
+     "rc": 0,
+     "ready": true,
+     "stats": [
+      9532178698350303309,
+      7865,
+      3221,
+      185,
+      3,
+      0,
+      0
+     ],
+     "stderr": ""
+    }
+   },
+   "seconds": 23.7
+  },
+  "w6_500": {
+   "pass": true,
+   "rounds": 500,
+   "bad": 0,
+   "tail": "rounds 500 bad 0\n",
+   "seconds": 20.0
+  },
+  "samples": {
+   "3ef9dae3-a341-433f-a88b-5af6638cb92d": {
+    "total": 66,
+    "want": 66,
+    "check": "items 66 bad 0 boundary 6371165",
+    "ct_same": true
+   },
+   "845221e9-2439-4250-9d97-d8379559740a": {
+    "total": 0,
+    "want": 0,
+    "check": "items 0 bad 0 boundary None",
+    "ct_same": true
+   },
+   "99451ea7-1d67-4707-aa2a-1a365c24e255": {
+    "total": 167,
+    "want": 167,
+    "check": "items 167 bad 0 boundary 29013435",
+    "ct_same": true
+   },
+   "99451ea7-1d67-4707-aa2a-1a365c24e255/subagents/agent-acb21828acc14ffa3": {
+    "total": 17,
+    "want": 17,
+    "check": "items 17 bad 0 boundary 8488876",
+    "ct_same": true
+   },
+   "pass": true,
+   "seconds": 3.9
+  },
+  "kx4": {
+   "pass": true,
+   "ekx1": {
+    "opened_s": 10.012841701507568,
+    "idx_bytes_series": [
+     67267086,
+     86739526,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030
+    ],
+    "grow_after_open_60s": 0,
+    "ratio_to_batch": 1.0000003287040908,
+    "pass": true
+   },
+   "ekx2_conversion_errors": [],
+   "n2_m8": {
+    "runs": [
+     {
+      "run": 1,
+      "ok": true,
+      "s": 1.479,
+      "tries": 13,
+      "last_error": null
+     },
+     {
+      "run": 2,
+      "ok": true,
+      "s": 1.2,
+      "tries": 12,
+      "last_error": null
+     },
+     {
+      "run": 3,
+      "ok": true,
+      "s": 1.184,
+      "tries": 11,
+      "last_error": null
+     },
+     {
+      "run": 4,
+      "ok": true,
+      "s": 1.185,
+      "tries": 12,
+      "last_error": null
+     },
+     {
+      "run": 5,
+      "ok": true,
+      "s": 1.21,
+      "tries": 12,
+      "last_error": null
+     }
+    ],
+    "pass": true
+   },
+   "seconds": 102.6
+  },
+  "kwov": {
+   "pass": true,
+   "tail": "{\"recovered_message_lines\": 164, \"final_message_lines\": 166, \"pass\": true, \"files\": 36, \"covers_equal_eof\": true, \"overflow_count\": 91, \"rescan_count\": 91, \"restore_calls\": 0, \"metrics\": [\"VRS_TEST_START elapsed_us=1528\", \"VRS_TEST_SCAN us=705 elapsed_us=3096\", \"VRS_TEST_PRELIB elapsed_us=36657 cover_reads=32 cover_sum_us=2764 skipped=0\", \"VRS_TEST_OPEN us=5052 elapsed_us=41709\"], \"relay_stage_metrics\": {\"kx4data.err\": [\"VRS_TEST_START elapsed_us=1447\", \"VRS_TEST_SCAN us=109743 elapsed_us=112122\", \"VRS_TEST_PRELIB elapsed_us=5062112 cover_reads=1810 cover_sum_us=395707 skipped=0\", \"VRS_TEST_OPEN us=77034 elapsed_us=5139145\"], \"sdata.err\": [\"VRS_TEST_START elapsed_us=1585\", \"VRS_TEST_SCAN us=1354 elapsed_us=3921\", \"VRS_TEST_PRELIB elapsed_us=74275 cover_reads=4 cover_sum_us=412 skipped=0\", \"VRS_TEST_OPEN us=4038 elapsed_us=78313\", \"VRS_TEST_FIRST_RESTORE elapsed_us=3062687\", \"VRS_TEST_RESTORE us=2557 ready_us=151673 shards_loaded=0 shards_rebuilt=0\", \"VRS_TEST_RESTORE us=2661 ready_us=151673 shards_loaded=0 shards_rebuilt=0\", \"VRS_TEST_RESTORE us=13646 ready_us=151673 shards_loaded=0 shards_rebuilt=0\", \"VRS_TEST_RESTORE us=14567 ready_us=151673 shards_loaded=0 shards_rebuilt=0\"]}, \"g2_markers\": {\"pass\": true, \"writer_contract\": \"post-append publish P\", \"cases\": [{\"initial_files\": 64, \"changed_files\": 37, \"recovered_messages\": 69, \"final_messages\": 136, \"concurrent_publications\": 64, \"marker_scans\": [[0, 221], [37, 11581], [6, 1605], [3, 1013], [0, 3545], [0, 120], [0, 101]], \"recovered_us\": 50317.8, \"hook_process_median_us\": 9281.7, \"hook_process_max_us\": 11821.9, \"overflow_count\": 85, \"remaining_markers\": 0, \"restore_calls\": 0, \"pass\": true}, {\"initial_files\": 4128, \"changed_files\": 37, \"recovered_messages\": 69, \"final_messages\": 136, \"concurrent_publications\": 64, \"marker_scans\": [[0, 148], [37, 15460], [1, 412], [0, 246], [0, 124]], \"recovered_us\": 527277.5, \"hook_process_median_us\": 9405.9, \"hook_process_max_us\": 19203.4, \"overflow_count\": 77, \"remaining_markers\": 0, \"restore_calls\": 0, \"pass\": true}]}}\n",
+   "seconds": 12.9
+  }
+ },
+ "started": "2026-10-13 18:31:05",
+ "rev": "20afbcd3bc2a0cd4487617d895c19e44256b0709",
+ "finished": "2026-10-13 18:35:29"
+}

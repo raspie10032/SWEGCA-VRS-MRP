@@ -1,0 +1,825 @@
+{
+  "sample_manifest": {
+    "sample/projects/<project-dir>/99451ea7-1d67-4707-aa2a-1a365c24e255.jsonl": "0f94814f7756f3c3979a62ace64064e5ca54ab7d042a35f080a788107cf514b3",
+    "sample/projects/<project-dir>/99451ea7-1d67-4707-aa2a-1a365c24e255/subagents/agent-acb21828acc14ffa3.jsonl": "70ebdf473eba13c9a54fdaff15b4d21662c21f2b331297fee386948d9fc7348d",
+    "sample/projects/<project-dir>/3ef9dae3-a341-433f-a88b-5af6638cb92d.jsonl": "f437cd323a06868156fc04fdbfa640a8efac68de55547b670f90dfbe0807947e",
+    "sample/projects/<project-dir>/845221e9-2439-4250-9d97-d8379559740a.jsonl": "0c3f8567530efb6c01a970d14ccd8a2ed77715c8a7d027f96128195264a2b517"
+  },
+  "conversion": {
+    "99451ea7-1d67-4707-aa2a-1a365c24e255.jsonl": {
+      "U1": "PASS",
+      "U4": "PASS",
+      "threads": 8,
+      "tails": 50,
+      "original_bytes": 28625482,
+      "rollout_bytes": 2751622,
+      "sha256": "a6034a5291dd05f75da7a99808f0a7b3baabb2ab354a1c062515164ef7581d94",
+      "counts": {
+        "kinds": {
+          "assistant/text": {
+            "included": 505,
+            "excluded": 0,
+            "emitted": 855
+          },
+          "assistant/thinking": {
+            "included": 169,
+            "excluded": 1007,
+            "emitted": 169
+          },
+          "assistant/tool_use": {
+            "included": 1449,
+            "excluded": 0,
+            "emitted": 1449
+          },
+          "line:agent-name": {
+            "included": 0,
+            "excluded": 641,
+            "emitted": 0
+          },
+          "line:assistant": {
+            "included": 2123,
+            "excluded": 1007,
+            "emitted": 2473
+          },
+          "line:atis-latch": {
+            "included": 0,
+            "excluded": 641,
+            "emitted": 0
+          },
+          "line:attachment/agent_listing_delta": {
+            "included": 8,
+            "excluded": 0,
+            "emitted": 8
+          },
+          "line:attachment/auto_mode": {
+            "included": 8,
+            "excluded": 0,
+            "emitted": 8
+          },
+          "line:attachment/command_permissions": {
+            "included": 0,
+            "excluded": 1,
+            "emitted": 0
+          },
+          "line:attachment/compact_file_reference": {
+            "included": 9,
+            "excluded": 0,
+            "emitted": 9
+          },
+          "line:attachment/credential_org": {
+            "included": 0,
+            "excluded": 8,
+            "emitted": 0
+          },
+          "line:attachment/date": {
+            "included": 12,
+            "excluded": 0,
+            "emitted": 12
+          },
+          "line:attachment/deferred_tools_delta": {
+            "included": 16,
+            "excluded": 0,
+            "emitted": 16
+          },
+          "line:attachment/deferred_tools_record": {
+            "included": 0,
+            "excluded": 83,
+            "emitted": 0
+          },
+          "line:attachment/edited_text_file": {
+            "included": 22,
+            "excluded": 0,
+            "emitted": 22
+          },
+          "line:attachment/environment": {
+            "included": 12,
+            "excluded": 0,
+            "emitted": 12
+          },
+          "line:attachment/file": {
+            "included": 26,
+            "excluded": 0,
+            "emitted": 26
+          },
+          "line:attachment/hook_additional_context": {
+            "included": 123,
+            "excluded": 0,
+            "emitted": 123
+          },
+          "line:attachment/hook_blocking_error": {
+            "included": 175,
+            "excluded": 0,
+            "emitted": 175
+          },
+          "line:attachment/hook_cancelled": {
+            "included": 0,
+            "excluded": 12,
+            "emitted": 0
+          },
+          "line:attachment/hook_non_blocking_error": {
+            "included": 0,
+            "excluded": 1,
+            "emitted": 0
+          },
+          "line:attachment/hook_success": {
+            "included": 0,
+            "excluded": 516,
+            "emitted": 0
+          },
+          "line:attachment/hook_system_message": {
+            "included": 0,
+            "excluded": 505,
+            "emitted": 0
+          },
+          "line:attachment/instructions": {
+            "included": 12,
+            "excluded": 0,
+            "emitted": 12
+          },
+          "line:attachment/invoked_skills": {
+            "included": 7,
+            "excluded": 0,
+            "emitted": 7
+          },
+          "line:attachment/mcp_instructions_delta": {
+            "included": 9,
+            "excluded": 0,
+            "emitted": 9
+          },
+          "line:attachment/model": {
+            "included": 8,
+            "excluded": 0,
+            "emitted": 8
+          },
+          "line:attachment/prompt_snapshot": {
+            "included": 0,
+            "excluded": 16,
+            "emitted": 0
+          },
+          "line:attachment/queued_command": {
+            "included": 58,
+            "excluded": 0,
+            "emitted": 58
+          },
+          "line:attachment/read_truncation_notice": {
+            "included": 1,
+            "excluded": 0,
+            "emitted": 1
+          },
+          "line:attachment/remote_session_change": {
+            "included": 9,
+            "excluded": 0,
+            "emitted": 9
+          },
+          "line:attachment/session_context": {
+            "included": 8,
+            "excluded": 0,
+            "emitted": 8
+          },
+          "line:attachment/silent_turn_reminder": {
+            "included": 121,
+            "excluded": 0,
+            "emitted": 121
+          },
+          "line:attachment/skill_listing": {
+            "included": 3,
+            "excluded": 0,
+            "emitted": 3
+          },
+          "line:attachment/task_status": {
+            "included": 12,
+            "excluded": 0,
+            "emitted": 12
+          },
+          "line:attachment/thinking_drop": {
+            "included": 0,
+            "excluded": 6,
+            "emitted": 0
+          },
+          "line:attachment/total_tokens_reminder": {
+            "included": 1435,
+            "excluded": 0,
+            "emitted": 1435
+          },
+          "line:bridge-session": {
+            "included": 0,
+            "excluded": 606,
+            "emitted": 0
+          },
+          "line:cost-state": {
+            "included": 0,
+            "excluded": 1,
+            "emitted": 0
+          },
+          "line:custom-title": {
+            "included": 0,
+            "excluded": 648,
+            "emitted": 0
+          },
+          "line:file-history-delta": {
+            "included": 0,
+            "excluded": 85,
+            "emitted": 0
+          },
+          "line:file-history-snapshot": {
+            "included": 0,
+            "excluded": 144,
+            "emitted": 0
+          },
+          "line:last-prompt": {
+            "included": 0,
+            "excluded": 642,
+            "emitted": 0
+          },
+          "line:mode": {
+            "included": 0,
+            "excluded": 531,
+            "emitted": 0
+          },
+          "line:queue-operation": {
+            "included": 0,
+            "excluded": 548,
+            "emitted": 0
+          },
+          "line:system/compact_boundary": {
+            "included": 0,
+            "excluded": 7,
+            "emitted": 0
+          },
+          "line:system/stop_hook_summary": {
+            "included": 0,
+            "excluded": 350,
+            "emitted": 0
+          },
+          "line:user": {
+            "included": 1625,
+            "excluded": 0,
+            "emitted": 1802
+          },
+          "line:user/compact_summary": {
+            "included": 0,
+            "excluded": 7,
+            "emitted": 0
+          },
+          "line:user/meta": {
+            "included": 180,
+            "excluded": 0,
+            "emitted": 355
+          },
+          "user/image": {
+            "included": 1,
+            "excluded": 0,
+            "emitted": 2
+          },
+          "user/text": {
+            "included": 176,
+            "excluded": 0,
+            "emitted": 351
+          },
+          "user/tool_result": {
+            "included": 1449,
+            "excluded": 0,
+            "emitted": 1449
+          }
+        },
+        "unknown": 4487
+      },
+      "metrics": {
+        "KT1_clear_while_open": 0,
+        "KT2": 0,
+        "KU1_document": 33,
+        "KU1_lib": 33,
+        "KP1c_timestamped": 286,
+        "repeated_end_turn_id_texts": 0,
+        "open_at_eof": 0,
+        "KP1c_rollout": 172,
+        "utterances": 196,
+        "T_bytes": 28625482,
+        "C_bytes": 2751622,
+        "ratio": 0.09612491415865067
+      }
+    },
+    "agent-acb21828acc14ffa3.jsonl": {
+      "U1": "PASS",
+      "U4": "PASS",
+      "threads": 8,
+      "tails": 50,
+      "original_bytes": 8996011,
+      "rollout_bytes": 599254,
+      "sha256": "4764a07c2d98b2f29003ef79656e867d464c9bdb63f7701810c2a1b1d7f6e5d9",
+      "counts": {
+        "kinds": {
+          "assistant/text": {
+            "included": 19,
+            "excluded": 0,
+            "emitted": 23
+          },
+          "assistant/thinking": {
+            "included": 0,
+            "excluded": 429,
+            "emitted": 0
+          },
+          "assistant/tool_use": {
+            "included": 545,
+            "excluded": 0,
+            "emitted": 545
+          },
+          "line:assistant": {
+            "included": 564,
+            "excluded": 429,
+            "emitted": 568
+          },
+          "line:attachment/agent_listing_delta": {
+            "included": 5,
+            "excluded": 0,
+            "emitted": 5
+          },
+          "line:attachment/auto_mode": {
+            "included": 5,
+            "excluded": 0,
+            "emitted": 5
+          },
+          "line:attachment/compact_file_reference": {
+            "included": 7,
+            "excluded": 0,
+            "emitted": 7
+          },
+          "line:attachment/credential_org": {
+            "included": 0,
+            "excluded": 5,
+            "emitted": 0
+          },
+          "line:attachment/date": {
+            "included": 5,
+            "excluded": 0,
+            "emitted": 5
+          },
+          "line:attachment/deferred_tools_delta": {
+            "included": 5,
+            "excluded": 0,
+            "emitted": 5
+          },
+          "line:attachment/deferred_tools_record": {
+            "included": 0,
+            "excluded": 17,
+            "emitted": 0
+          },
+          "line:attachment/edited_text_file": {
+            "included": 23,
+            "excluded": 0,
+            "emitted": 23
+          },
+          "line:attachment/environment": {
+            "included": 5,
+            "excluded": 0,
+            "emitted": 5
+          },
+          "line:attachment/file": {
+            "included": 11,
+            "excluded": 0,
+            "emitted": 11
+          },
+          "line:attachment/hook_additional_context": {
+            "included": 4,
+            "excluded": 0,
+            "emitted": 4
+          },
+          "line:attachment/hook_success": {
+            "included": 0,
+            "excluded": 4,
+            "emitted": 0
+          },
+          "line:attachment/instructions": {
+            "included": 5,
+            "excluded": 0,
+            "emitted": 5
+          },
+          "line:attachment/mcp_instructions_delta": {
+            "included": 5,
+            "excluded": 0,
+            "emitted": 5
+          },
+          "line:attachment/model": {
+            "included": 5,
+            "excluded": 0,
+            "emitted": 5
+          },
+          "line:attachment/prompt_snapshot": {
+            "included": 0,
+            "excluded": 10,
+            "emitted": 0
+          },
+          "line:attachment/queued_command": {
+            "included": 10,
+            "excluded": 0,
+            "emitted": 10
+          },
+          "line:attachment/remote_session_change": {
+            "included": 5,
+            "excluded": 0,
+            "emitted": 5
+          },
+          "line:attachment/session_context": {
+            "included": 5,
+            "excluded": 0,
+            "emitted": 5
+          },
+          "line:attachment/skill_listing": {
+            "included": 3,
+            "excluded": 0,
+            "emitted": 3
+          },
+          "line:attachment/task_status": {
+            "included": 1,
+            "excluded": 0,
+            "emitted": 1
+          },
+          "line:attachment/thinking_drop": {
+            "included": 0,
+            "excluded": 4,
+            "emitted": 0
+          },
+          "line:attachment/total_tokens_reminder": {
+            "included": 512,
+            "excluded": 0,
+            "emitted": 512
+          },
+          "line:system/compact_boundary": {
+            "included": 0,
+            "excluded": 4,
+            "emitted": 0
+          },
+          "line:user": {
+            "included": 546,
+            "excluded": 0,
+            "emitted": 547
+          },
+          "line:user/compact_summary": {
+            "included": 0,
+            "excluded": 4,
+            "emitted": 0
+          },
+          "line:user/meta": {
+            "included": 3,
+            "excluded": 0,
+            "emitted": 3
+          },
+          "user/text": {
+            "included": 1,
+            "excluded": 0,
+            "emitted": 2
+          },
+          "user/tool_result": {
+            "included": 545,
+            "excluded": 0,
+            "emitted": 545
+          }
+        },
+        "unknown": 0
+      },
+      "metrics": {
+        "KT1_clear_while_open": 0,
+        "KT2": 0,
+        "KU1_document": 0,
+        "KU1_lib": 0,
+        "KP1c_timestamped": 18,
+        "repeated_end_turn_id_texts": 0,
+        "open_at_eof": 0,
+        "KP1c_rollout": 12,
+        "utterances": 1,
+        "T_bytes": 8996011,
+        "C_bytes": 599254,
+        "ratio": 0.06661330227364107
+      }
+    },
+    "3ef9dae3-a341-433f-a88b-5af6638cb92d.jsonl": {
+      "U1": "PASS",
+      "U4": "PASS",
+      "threads": 8,
+      "tails": 50,
+      "original_bytes": 6447209,
+      "rollout_bytes": 775478,
+      "sha256": "a5df31bc689b07275d964c053af4a4c593412c9c6c5e17bfff668ed5cb9c77c5",
+      "counts": {
+        "kinds": {
+          "assistant/text": {
+            "included": 317,
+            "excluded": 0,
+            "emitted": 409
+          },
+          "assistant/thinking": {
+            "included": 0,
+            "excluded": 330,
+            "emitted": 0
+          },
+          "assistant/tool_use": {
+            "included": 512,
+            "excluded": 0,
+            "emitted": 512
+          },
+          "line:assistant": {
+            "included": 829,
+            "excluded": 330,
+            "emitted": 921
+          },
+          "line:atis-latch": {
+            "included": 0,
+            "excluded": 158,
+            "emitted": 0
+          },
+          "line:attachment/agent_listing_delta": {
+            "included": 0,
+            "excluded": 2,
+            "emitted": 0
+          },
+          "line:attachment/auto_mode": {
+            "included": 0,
+            "excluded": 1,
+            "emitted": 0
+          },
+          "line:attachment/deferred_tools_delta": {
+            "included": 0,
+            "excluded": 10,
+            "emitted": 0
+          },
+          "line:attachment/edited_text_file": {
+            "included": 0,
+            "excluded": 19,
+            "emitted": 0
+          },
+          "line:attachment/file": {
+            "included": 0,
+            "excluded": 5,
+            "emitted": 0
+          },
+          "line:attachment/hook_blocking_error": {
+            "included": 0,
+            "excluded": 44,
+            "emitted": 0
+          },
+          "line:attachment/mcp_instructions_delta": {
+            "included": 0,
+            "excluded": 9,
+            "emitted": 0
+          },
+          "line:attachment/queued_command": {
+            "included": 17,
+            "excluded": 13,
+            "emitted": 17
+          },
+          "line:attachment/remote_session_change": {
+            "included": 0,
+            "excluded": 14,
+            "emitted": 0
+          },
+          "line:attachment/skill_listing": {
+            "included": 0,
+            "excluded": 1,
+            "emitted": 0
+          },
+          "line:attachment/total_tokens_reminder": {
+            "included": 0,
+            "excluded": 522,
+            "emitted": 0
+          },
+          "line:bridge-session": {
+            "included": 0,
+            "excluded": 171,
+            "emitted": 0
+          },
+          "line:custom-title": {
+            "included": 0,
+            "excluded": 165,
+            "emitted": 0
+          },
+          "line:last-prompt": {
+            "included": 0,
+            "excluded": 165,
+            "emitted": 0
+          },
+          "line:mode": {
+            "included": 0,
+            "excluded": 152,
+            "emitted": 0
+          },
+          "line:queue-operation": {
+            "included": 0,
+            "excluded": 150,
+            "emitted": 0
+          },
+          "line:system/compact_boundary": {
+            "included": 0,
+            "excluded": 1,
+            "emitted": 0
+          },
+          "line:system/stop_hook_summary": {
+            "included": 0,
+            "excluded": 74,
+            "emitted": 0
+          },
+          "line:user": {
+            "included": 557,
+            "excluded": 0,
+            "emitted": 602
+          },
+          "line:user/compact_summary": {
+            "included": 0,
+            "excluded": 1,
+            "emitted": 0
+          },
+          "line:user/meta": {
+            "included": 44,
+            "excluded": 0,
+            "emitted": 88
+          },
+          "user/text": {
+            "included": 45,
+            "excluded": 0,
+            "emitted": 90
+          },
+          "user/tool_result": {
+            "included": 512,
+            "excluded": 0,
+            "emitted": 512
+          }
+        },
+        "unknown": 961
+      },
+      "metrics": {
+        "KT1_clear_while_open": 0,
+        "KT2": 0,
+        "KU1_document": 3,
+        "KU1_lib": 3,
+        "KP1c_timestamped": 117,
+        "repeated_end_turn_id_texts": 4,
+        "open_at_eof": 0,
+        "KP1c_rollout": 18,
+        "utterances": 62,
+        "T_bytes": 6447209,
+        "C_bytes": 775478,
+        "ratio": 0.12028119454480225
+      }
+    },
+    "845221e9-2439-4250-9d97-d8379559740a.jsonl": {
+      "U1": "PASS",
+      "U4": "PASS",
+      "threads": 8,
+      "tails": 50,
+      "original_bytes": 211082,
+      "rollout_bytes": 22965,
+      "sha256": "759db7fb26f93bdb6d16673140775d105c25378d5781fb804c1ffa291f7b5090",
+      "counts": {
+        "kinds": {
+          "assistant/text": {
+            "included": 6,
+            "excluded": 0,
+            "emitted": 7
+          },
+          "assistant/thinking": {
+            "included": 5,
+            "excluded": 0,
+            "emitted": 5
+          },
+          "assistant/tool_use": {
+            "included": 29,
+            "excluded": 0,
+            "emitted": 29
+          },
+          "line:ai-title": {
+            "included": 0,
+            "excluded": 13,
+            "emitted": 0
+          },
+          "line:assistant": {
+            "included": 40,
+            "excluded": 0,
+            "emitted": 41
+          },
+          "line:attachment/agent_listing_delta": {
+            "included": 0,
+            "excluded": 1,
+            "emitted": 0
+          },
+          "line:attachment/deferred_tools_delta": {
+            "included": 0,
+            "excluded": 1,
+            "emitted": 0
+          },
+          "line:attachment/mcp_instructions_delta": {
+            "included": 0,
+            "excluded": 1,
+            "emitted": 0
+          },
+          "line:attachment/skill_listing": {
+            "included": 0,
+            "excluded": 2,
+            "emitted": 0
+          },
+          "line:attachment/task_reminder": {
+            "included": 0,
+            "excluded": 3,
+            "emitted": 0
+          },
+          "line:last-prompt": {
+            "included": 0,
+            "excluded": 6,
+            "emitted": 0
+          },
+          "line:mode": {
+            "included": 0,
+            "excluded": 5,
+            "emitted": 0
+          },
+          "line:queue-operation": {
+            "included": 0,
+            "excluded": 2,
+            "emitted": 0
+          },
+          "line:user": {
+            "included": 30,
+            "excluded": 0,
+            "emitted": 31
+          },
+          "user/text": {
+            "included": 1,
+            "excluded": 0,
+            "emitted": 2
+          },
+          "user/tool_result": {
+            "included": 29,
+            "excluded": 0,
+            "emitted": 29
+          }
+        },
+        "unknown": 26
+      },
+      "metrics": {
+        "KT1_clear_while_open": 0,
+        "KT2": 0,
+        "KU1_document": 0,
+        "KU1_lib": 0,
+        "KP1c_timestamped": 0,
+        "repeated_end_turn_id_texts": 0,
+        "open_at_eof": 0,
+        "KP1c_rollout": 0,
+        "utterances": 1,
+        "T_bytes": 211082,
+        "C_bytes": 22965,
+        "ratio": 0.10879658142333311
+      }
+    }
+  },
+  "restore": {
+    "99451ea7-1d67-4707-aa2a-1a365c24e255.jsonl": {
+      "items": 150,
+      "pages": 1,
+      "utf16": 22292,
+      "boundary": 25132034,
+      "max_body_utf16": 162,
+      "bodies_over_4000": 0
+    },
+    "agent-acb21828acc14ffa3.jsonl": {
+      "items": 17,
+      "pages": 1,
+      "utf16": 35213,
+      "boundary": 8488876,
+      "max_body_utf16": 10580,
+      "bodies_over_4000": 4
+    },
+    "3ef9dae3-a341-433f-a88b-5af6638cb92d.jsonl": {
+      "items": 66,
+      "pages": 1,
+      "utf16": 12171,
+      "boundary": 6371165,
+      "max_body_utf16": 891,
+      "bodies_over_4000": 0
+    },
+    "845221e9-2439-4250-9d97-d8379559740a.jsonl": {
+      "items": 0,
+      "pages": 1,
+      "utf16": 94,
+      "boundary": null,
+      "max_body_utf16": 0,
+      "bodies_over_4000": 0
+    }
+  },
+  "zero_output_witness": [
+    {
+      "source": 106,
+      "ordinal": 2,
+      "output": 626,
+      "tail_bytes": 2700,
+      "omitted_lines": 100
+    },
+    {
+      "source": 106,
+      "ordinal": 2,
+      "output": 626,
+      "tail_bytes": 270000,
+      "omitted_lines": 10000
+    }
+  ],
+  "cc_verified": 10163,
+  "work_directory": "$HOME/tmp/vrscc/src/tests/u-rahpxd7h",
+  "criteria": "src/tests/PLAN.md; sample subset only"
+}

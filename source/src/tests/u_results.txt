@@ -1,0 +1,34 @@
+CORE PASS JSON/UTF16/SHA/C2
+U1:99451ea7-1d6 PASS tails=50 threads=8 bytes=2751622 sha256=a6034a5291dd05f75da7a99808f0a7b3baabb2ab354a1c062515164ef7581d94
+U4:99451ea7-1d6 PASS partial_original=absent completed=equal torn_rollout=equal
+U1:agent-acb218 PASS tails=50 threads=8 bytes=599254 sha256=4764a07c2d98b2f29003ef79656e867d464c9bdb63f7701810c2a1b1d7f6e5d9
+U4:agent-acb218 PASS partial_original=absent completed=equal torn_rollout=equal
+U1:3ef9dae3-a34 PASS tails=50 threads=8 bytes=775478 sha256=a5df31bc689b07275d964c053af4a4c593412c9c6c5e17bfff668ed5cb9c77c5
+U4:3ef9dae3-a34 PASS partial_original=absent completed=equal torn_rollout=equal
+U1:845221e9-243 PASS tails=50 threads=8 bytes=22965 sha256=759db7fb26f93bdb6d16673140775d105c25378d5781fb804c1ffa291f7b5090
+U4:845221e9-243 PASS partial_original=absent completed=equal torn_rollout=equal
+U2:99451ea7-1d6 PASS workers=8 source_bytes=28625482 chunks_at_2MiB
+U2:agent-acb218 PASS workers=8 source_bytes=8996011 chunks_at_2MiB
+U2:3ef9dae3-a34 PASS workers=8 source_bytes=6447209 chunks_at_2MiB
+U3:99451ea7-1d6 PASS cc_lines=6724 bytes=2751622
+U3:agent-acb218 PASS cc_lines=1739 bytes=599254
+U3:3ef9dae3-a34 PASS cc_lines=1628 bytes=775478
+U3:845221e9-243 PASS cc_lines=72 bytes=22965
+U5:99451ea7-1d6 PASS items=150 pages=1 boundary=25132034 sha_body_mismatches=0
+U5:agent-acb218 PASS items=17 pages=1 boundary=8488876 sha_body_mismatches=0
+U5:3ef9dae3-a34 PASS items=66 pages=1 boundary=6371165 sha_body_mismatches=0
+U5:845221e9-243 PASS items=0 pages=1 boundary=None sha_body_mismatches=0
+U6:99451ea7-1d6 PASS items=150 pages4000=6 pages95000=1
+U6:agent-acb218 FAIL AssertionError({'ok': False, 'error': 'ITEM_EXCEEDS_BUDGET_AT_0:0'})
+U6:3ef9dae3-a34 PASS items=66 pages4000=4 pages95000=1
+M5-repeat PASS equal_pairs=10/10
+U6:fixed-fixture PASS items=32 pages4000=4 pages95000=1 max_utf16=3956
+READ/errors PASS read_pages=6 byte_equal=1 rejection_checks=4/4
+REQUEST-concurrency PASS equal=16/16 callers=8
+M4-local PASS new_user_present=100/100
+MCP-local PASS tools=2 meta=100000 caller_test_override=verified procStart_mismatch=rejected no_identity=rejected U7_live=not_run
+AUTOSTART/singleton PASS detached_pid=591295 elapsed_s=0.051 second_daemon_rejected=1
+RESTART PASS equal_response=1 elapsed_s=0.021
+SHA-tamper PASS {'ok': False, 'error': 'SOURCE_SHA_MISMATCH_AT_0'}
+DEFINITION-zero-output PASS counterexample_reproduced=1 omitted_suffix=100/10000 unchanged_cursor reread_bytes=2700/270000
+ARTIFACTS $HOME/tmp/vrscc/src/tests/u-rahpxd7h

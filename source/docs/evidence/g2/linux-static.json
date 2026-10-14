@@ -1,0 +1,27 @@
+{
+  "pass": true,
+  "platform": "linux",
+  "source_files": 18,
+  "source_hits": [],
+  "object_symbol_hits": {
+    "vrs_lib.o": [],
+    "evidence_rules.o": [],
+    "sha256.o": [],
+    "strong_types.o": [],
+    "d_cc_conv.o": [],
+    "d_vrs_ccd.o": []
+  },
+  "allocator_objects_excluded": [
+    "mi_newdel.o",
+    "mimalloc.o"
+  ],
+  "allocator_missing_from_executables": [],
+  "linux_existing_atomic_wait": {
+    "vrs_lib.o": [
+      "U _ZNSt8__detail11__wait_implEPKvRNS_16__wait_args_baseE",
+      "U _ZNSt8__detail13__notify_implEPKvbRKNS_16__wait_args_baseE"
+    ]
+  },
+  "encoding_bad": [],
+  "boundary": "Product undefined symbols and source syntax; allocator and linked OS runtime internals are separate."
+}

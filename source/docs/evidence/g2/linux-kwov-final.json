@@ -1,0 +1,71 @@
+{
+  "inotify_capacity": 16384,
+  "recovered_message_lines": 164,
+  "final_message_lines": 166,
+  "pass": true,
+  "files": 36,
+  "covers_equal_eof": true,
+  "overflow_count": 1,
+  "rescan_count": 1,
+  "restore_calls": 0,
+  "metrics": [
+    "VRS_TEST_START elapsed_us=156",
+    "VRS_TEST_SCAN us=185 elapsed_us=563",
+    "VRS_TEST_PRELIB elapsed_us=8977 cover_reads=32 cover_sum_us=8377 skipped=0",
+    "VRS_TEST_OPEN us=1657 elapsed_us=10634"
+  ],
+  "g2_markers": {
+    "pass": true,
+    "writer_contract": "post-append publish P",
+    "cases": [
+      {
+        "initial_files": 64,
+        "changed_files": 37,
+        "recovered_messages": 69,
+        "final_messages": 136,
+        "concurrent_publications": 64,
+        "marker_scans": [
+          [
+            0,
+            5
+          ],
+          [
+            37,
+            539
+          ]
+        ],
+        "recovered_us": 31995.687,
+        "hook_process_median_us": 638.157,
+        "hook_process_max_us": 1425.774,
+        "overflow_count": 1,
+        "remaining_markers": 0,
+        "restore_calls": 0,
+        "pass": true
+      },
+      {
+        "initial_files": 4128,
+        "changed_files": 37,
+        "recovered_messages": 69,
+        "final_messages": 136,
+        "concurrent_publications": 64,
+        "marker_scans": [
+          [
+            0,
+            14
+          ],
+          [
+            37,
+            726
+          ]
+        ],
+        "recovered_us": 73034.446,
+        "hook_process_median_us": 656.567,
+        "hook_process_max_us": 1677.067,
+        "overflow_count": 1,
+        "remaining_markers": 0,
+        "restore_calls": 0,
+        "pass": true
+      }
+    ]
+  }
+}

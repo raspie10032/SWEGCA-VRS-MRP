@@ -1,0 +1,17 @@
+{
+  "src/cc_conv.hpp": "b8281487803ff72f59efec82a4df87fc4b6bf607995dfc06ff27e48d073bee18",
+  "src/cc_io.hpp": "3fec5fa98246d9b84d16c2b1898f8fa589bfbcc478a5f0a98fba4e644aa20f0a",
+  "src/cc_json.hpp": "f8ad169f6626f431cbd52b117c0cc42b403953bce5ee71b969479196038e2432",
+  "src/cc_conv.cpp": "f61175f1d651b45026092b64774179af94ef493e6d048dd9c2b88646f78637fc",
+  "src/vrs_ccd.cpp": "2bd0d2802bde3a7b93a4d9e59fe8397a2268b2e6f26598ab70c6af4770b612f9",
+  "src/bridge/vrs_lib_bridge.py": "30aea57c4167a090cd9cc74c327b0cbdca90e9cc1c3774df560d49aea64224ef",
+  "src/build.sh": "429a1d5b80dd7fa23bb96e55b436f1448f5d069227cdbbfdfaf680b6785a3090",
+  "src/README.md": "07f4234086d410a012f2bb9864d9088b1892801fa71a4962a31114c17f56a8cb",
+  "src/tests/u_native.cpp": "844fb15846e92a7fefe26c7e2d1575d932373dcc1fbdd33ca900cbf8acf0f047",
+  "src/tests/run_u.py": "abf7fd450a964fce8b2607ca55b944501d041ac1f78b2387539796411f25a384",
+  "src/tests/run_u.sh": "af83b9e3739a9cf155c239c0200b67cf47c77f2ba4f6a1282ec14c8d5b3626a3",
+  "src/tests/static_check.py": "14099e5a6f3643fbb62741549bb86045a01da3b130d264fa8d663c04f4891770",
+  "src/tests/PLAN.md": "33107e9b4eb688a1815af6b24679da54498d6982de361b7966d1953a006b0e0f",
+  "src/build/vrs_ccd": "83b6807a69a2fc854a572e09efc5d227008d05db1f0894d7d3bb6d999e7b9ec4",
+  "src/build/u_native": "cda43fe0a3f69b6cf3191bc8dabe16748b3af2a335cf1eb61041be0e50be256a"
+}

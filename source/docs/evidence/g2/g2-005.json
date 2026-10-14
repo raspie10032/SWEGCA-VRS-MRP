@@ -1,0 +1,23 @@
+{
+ "id": "g2-005",
+ "branch": "ng2",
+ "tests": {
+  "build": {
+   "pass": true
+  },
+  "static": {
+   "pass": true,
+   "forbidden_symbols": [],
+   "lock_constructs": [],
+   "seconds": 0.2
+  },
+  "kwov": {
+   "pass": true,
+   "tail": "{\"recovered_message_lines\": 164, \"final_message_lines\": 166, \"pass\": true, \"files\": 36, \"covers_equal_eof\": true, \"overflow_count\": 98, \"rescan_count\": 98, \"restore_calls\": 0, \"metrics\": [\"VRS_TEST_START elapsed_us=1808\", \"VRS_TEST_SCAN us=1592 elapsed_us=4385\", \"VRS_TEST_PRELIB elapsed_us=24887 cover_reads=32 cover_sum_us=3865 skipped=0\", \"VRS_TEST_OPEN us=4619 elapsed_us=29506\"], \"g2_markers\": {\"pass\": true, \"writer_contract\": \"post-append publish P\", \"cases\": [{\"initial_files\": 64, \"changed_files\": 37, \"recovered_messages\": 69, \"final_messages\": 136, \"concurrent_publications\": 64, \"marker_scans\": [[0, 223], [37, 12963], [1, 473], [1, 322], [1, 345], [0, 132]], \"recovered_us\": 65774.2, \"hook_process_median_us\": 9210.7, \"hook_process_max_us\": 13935.6, \"overflow_count\": 87, \"remaining_markers\": 0, \"restore_calls\": 0, \"pass\": true}, {\"initial_files\": 4128, \"changed_files\": 37, \"recovered_messages\": 69, \"final_messages\": 136, \"concurrent_publications\": 64, \"marker_scans\": [[0, 176], [37, 16105], [1, 653], [1, 620], [0, 137]], \"recovered_us\": 515000.8, \"hook_process_median_us\": 9842.0, \"hook_process_max_us\": 13736.6, \"overflow_count\": 77, \"remaining_markers\": 0, \"restore_calls\": 0, \"pass\": true}]}}\n",
+   "seconds": 12.5
+  }
+ },
+ "started": "2026-10-13 18:14:13",
+ "rev": "7669838494213beecb03ff963158e341262c12a3",
+ "finished": "2026-10-13 18:15:10"
+}

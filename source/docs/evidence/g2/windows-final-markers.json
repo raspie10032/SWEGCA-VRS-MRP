@@ -1,0 +1,86 @@
+{
+  "pass": true,
+  "writer_contract": "post-append publish P",
+  "cases": [
+    {
+      "initial_files": 64,
+      "changed_files": 37,
+      "recovered_messages": 69,
+      "final_messages": 136,
+      "concurrent_publications": 64,
+      "marker_scans": [
+        [
+          0,
+          221
+        ],
+        [
+          37,
+          11581
+        ],
+        [
+          6,
+          1605
+        ],
+        [
+          3,
+          1013
+        ],
+        [
+          0,
+          3545
+        ],
+        [
+          0,
+          120
+        ],
+        [
+          0,
+          101
+        ]
+      ],
+      "recovered_us": 50317.8,
+      "hook_process_median_us": 9281.7,
+      "hook_process_max_us": 11821.9,
+      "overflow_count": 85,
+      "remaining_markers": 0,
+      "restore_calls": 0,
+      "pass": true
+    },
+    {
+      "initial_files": 4128,
+      "changed_files": 37,
+      "recovered_messages": 69,
+      "final_messages": 136,
+      "concurrent_publications": 64,
+      "marker_scans": [
+        [
+          0,
+          148
+        ],
+        [
+          37,
+          15460
+        ],
+        [
+          1,
+          412
+        ],
+        [
+          0,
+          246
+        ],
+        [
+          0,
+          124
+        ]
+      ],
+      "recovered_us": 527277.5,
+      "hook_process_median_us": 9405.9,
+      "hook_process_max_us": 19203.4,
+      "overflow_count": 77,
+      "remaining_markers": 0,
+      "restore_calls": 0,
+      "pass": true
+    }
+  ]
+}

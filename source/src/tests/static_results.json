@@ -1,0 +1,32 @@
+{
+  "source_paths": [
+    "src/cc_conv.hpp",
+    "src/cc_io.hpp",
+    "src/cc_json.hpp",
+    "src/cc_conv.cpp",
+    "src/vrs_ccd.cpp",
+    "src/bridge/vrs_lib_bridge.py",
+    "src/tests/u_native.cpp"
+  ],
+  "source_hits": [],
+  "object_symbol_hits": {
+    "cc_conv.o": [],
+    "evidence_rules.o": [],
+    "sha256.o": [],
+    "strong_types.o": [],
+    "vrs_ccd.o": [],
+    "vrs_lib.o": [
+      "U _ZNSt8__detail11__wait_implEPKvRNS_16__wait_args_baseE",
+      "U _ZNSt8__detail13__notify_implEPKvbRKNS_16__wait_args_baseE"
+    ],
+    "vrs_plat_win.o": []
+  },
+  "binary_symbol_hits": [
+    "U _ZNSt8__detail11__wait_implEPKvRNS_16__wait_args_baseE@GLIBCXX_3.4.35",
+    "U _ZNSt8__detail13__notify_implEPKvbRKNS_16__wait_args_baseE@GLIBCXX_3.4.35"
+  ],
+  "reference_files": 40,
+  "reference_changed": [],
+  "utf8_bom_free_files": 13,
+  "encoding_bad": []
+}

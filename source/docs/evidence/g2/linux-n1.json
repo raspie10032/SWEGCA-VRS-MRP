@@ -1,0 +1,204 @@
+{
+  "binary": "$HOME/tmp/vrsnative/wt/g2/.g2/build/vrs_cli",
+  "binary_sha256": "0b51dc0e6cc5ea3f13c98311d9f5e74ea835ae8221ad370d704b991d45743b45",
+  "rev": "6ad2c15fe414df988e752f87603d8c93a31d44bf",
+  "checker_rev": "6ad2c15fe414df988e752f87603d8c93a31d44bf",
+  "affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "workers": 6,
+  "m1": {
+    "input_count": 409,
+    "list_sha256": "9c65075f23db960e228e6117a03aae3205bca461811b3c9bae7edbf445d90ed8",
+    "batch": {
+      "command": [
+        "$HOME/tmp/vrsnative/wt/g2/.g2/build/vrs_cli",
+        "--stats",
+        "--workers",
+        "6",
+        "--cpus",
+        "0-11",
+        "--out",
+        "$HOME/tmp/vrsnative/wt/g2/.g2/n1-1/m1/batch",
+        "$HOME/tmp/m1/sessions",
+        "$HOME/tmp/vrsnative/wt/g2/.g2/n1-1/m1/index",
+        "@$HOME/tmp/vrsnative/relay/ref/m1/list.txt"
+      ],
+      "process_rc": 1,
+      "expected_process_rc": 1,
+      "assemble_count": 409,
+      "rc_list_equal": true,
+      "input_order_equal": true,
+      "stats_equal": true,
+      "stats": {
+        "items": "195357",
+        "turns": "3761",
+        "sessions": "409",
+        "cells_n": "2063475",
+        "cells_hash": "280399ba4c7e1040"
+      },
+      "reference_stats": {
+        "items": "195357",
+        "turns": "3761",
+        "sessions": "409",
+        "cells_n": "2063475",
+        "cells_hash": "280399ba4c7e1040"
+      },
+      "missing_json": [],
+      "extra_json": [],
+      "different_json": [],
+      "json_count": 409,
+      "ready_ms": 2885.0,
+      "reference_log_sha256": "faf790df3001fb602d46d70bdff728d1f034e72ac159b0f78abf830d1989d8a2",
+      "log_sha256": "9933d966c9a64659bccb68a1f79e0de75c6f0444c2ed83270f11a81ce51198da",
+      "pass": true
+    },
+    "reopen": {
+      "command": [
+        "$HOME/tmp/vrsnative/wt/g2/.g2/build/vrs_cli",
+        "--stats",
+        "--workers",
+        "6",
+        "--cpus",
+        "0-11",
+        "--out",
+        "$HOME/tmp/vrsnative/wt/g2/.g2/n1-1/m1/reopen",
+        "$HOME/tmp/m1/sessions",
+        "$HOME/tmp/vrsnative/wt/g2/.g2/n1-1/m1/index",
+        "@$HOME/tmp/vrsnative/relay/ref/m1/list.txt"
+      ],
+      "process_rc": 1,
+      "expected_process_rc": 1,
+      "assemble_count": 409,
+      "rc_list_equal": true,
+      "input_order_equal": true,
+      "stats_equal": true,
+      "stats": {
+        "items": "195357",
+        "turns": "3761",
+        "sessions": "409",
+        "cells_n": "2063475",
+        "cells_hash": "280399ba4c7e1040"
+      },
+      "reference_stats": {
+        "items": "195357",
+        "turns": "3761",
+        "sessions": "409",
+        "cells_n": "2063475",
+        "cells_hash": "280399ba4c7e1040"
+      },
+      "missing_json": [],
+      "extra_json": [],
+      "different_json": [],
+      "json_count": 409,
+      "ready_ms": 159.3,
+      "reference_log_sha256": "d49fa283c1ebc681dcc3c33f6c890a16024a77bda49c26f49c06c15379031ffa",
+      "log_sha256": "d760aad3135023199eeb3406884bd4532effcda25840e81824e412a300f7b1c0",
+      "pass": true
+    },
+    "pass": true
+  },
+  "kx2": {
+    "input_count": 1206,
+    "list_sha256": "66515dcdf9e2d109913e6d1258f79d464cba3b1cd7cc913c98188b71e0407da1",
+    "batch": {
+      "command": [
+        "$HOME/tmp/vrsnative/wt/g2/.g2/build/vrs_cli",
+        "--stats",
+        "--workers",
+        "6",
+        "--cpus",
+        "0-11",
+        "--out",
+        "$HOME/tmp/vrsnative/wt/g2/.g2/n1-1/kx2/batch",
+        "$HOME/tmp/kx2/s",
+        "$HOME/tmp/vrsnative/wt/g2/.g2/n1-1/kx2/index",
+        "@$HOME/tmp/vrsnative/relay/ref/kx2/list.txt"
+      ],
+      "process_rc": 0,
+      "expected_process_rc": 0,
+      "assemble_count": 1206,
+      "rc_list_equal": true,
+      "input_order_equal": true,
+      "stats_equal": true,
+      "stats": {
+        "items": "229098",
+        "turns": "8576",
+        "sessions": "1206",
+        "cells_n": "4590872",
+        "cells_hash": "03085bfb04024542"
+      },
+      "reference_stats": {
+        "items": "229098",
+        "turns": "8576",
+        "sessions": "1206",
+        "cells_n": "4590872",
+        "cells_hash": "03085bfb04024542"
+      },
+      "missing_json": [],
+      "extra_json": [],
+      "different_json": [],
+      "json_count": 1206,
+      "ready_ms": 2299.3,
+      "reference_log_sha256": "0f7cc1e28f4ccea832db243d9d4361a55aa9cd975e40c77c4e90e95e8b31399b",
+      "log_sha256": "4dbaf227b54a93b7a1efe455af441810d8842973fbba38f2f58aaeb6e75fc9a0",
+      "pass": true
+    },
+    "reopen": {
+      "command": [
+        "$HOME/tmp/vrsnative/wt/g2/.g2/build/vrs_cli",
+        "--stats",
+        "--workers",
+        "6",
+        "--cpus",
+        "0-11",
+        "--out",
+        "$HOME/tmp/vrsnative/wt/g2/.g2/n1-1/kx2/reopen",
+        "$HOME/tmp/kx2/s",
+        "$HOME/tmp/vrsnative/wt/g2/.g2/n1-1/kx2/index",
+        "@$HOME/tmp/vrsnative/relay/ref/kx2/list.txt"
+      ],
+      "process_rc": 0,
+      "expected_process_rc": 0,
+      "assemble_count": 1206,
+      "rc_list_equal": true,
+      "input_order_equal": true,
+      "stats_equal": true,
+      "stats": {
+        "items": "229098",
+        "turns": "8576",
+        "sessions": "1206",
+        "cells_n": "4590872",
+        "cells_hash": "03085bfb04024542"
+      },
+      "reference_stats": {
+        "items": "229098",
+        "turns": "8576",
+        "sessions": "1206",
+        "cells_n": "4590872",
+        "cells_hash": "03085bfb04024542"
+      },
+      "missing_json": [],
+      "extra_json": [],
+      "different_json": [],
+      "json_count": 1206,
+      "ready_ms": 403.0,
+      "reference_log_sha256": "06011d85928ba0c5f020da8246bf5a1dee9f5c02ce42ff97c499d5192d714f84",
+      "log_sha256": "3cdcb3c4f8d1398c4126d973805958fe4be73f1798efe76e287756d5de05ce82",
+      "pass": true
+    },
+    "pass": true
+  },
+  "pass": true
+}

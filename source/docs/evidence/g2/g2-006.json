@@ -1,0 +1,221 @@
+{
+ "id": "g2-006",
+ "branch": "ng2",
+ "tests": {
+  "build": {
+   "pass": true
+  },
+  "n1_m1": {
+   "batch": {
+    "cells_hash": "280399ba4c7e1040",
+    "ref_cells_hash": "280399ba4c7e1040",
+    "rc_list_equal": true,
+    "json_diff": [],
+    "json_diff_n": 0,
+    "ready_ms": 6029.0
+   },
+   "reopen": {
+    "cells_hash": "280399ba4c7e1040",
+    "ref_cells_hash": "280399ba4c7e1040",
+    "rc_list_equal": true,
+    "json_diff": [],
+    "json_diff_n": 0,
+    "ready_ms": 280.6
+   },
+   "pass": true,
+   "seconds": 10.1
+  },
+  "n1_kx2": {
+   "batch": {
+    "cells_hash": "03085bfb04024542",
+    "ref_cells_hash": "03085bfb04024542",
+    "rc_list_equal": true,
+    "json_diff": [],
+    "json_diff_n": 0,
+    "ready_ms": 5381.1
+   },
+   "reopen": {
+    "cells_hash": "03085bfb04024542",
+    "ref_cells_hash": "03085bfb04024542",
+    "rc_list_equal": true,
+    "json_diff": [],
+    "json_diff_n": 0,
+    "ready_ms": 656.5
+   },
+   "pass": true,
+   "seconds": 28.3
+  },
+  "w3": {
+   "idem": {
+    "rc": 0,
+    "tail": "in a row: the assembled answer equals the single insert's byte for byte (64394 bytes)\nPASS c: open on the finished file, no shard (full parse)\nPASS c: parse from scratch == insert-built tables (session hash)\nPASS c: items / turns equal\nPASS c: item / meta / task_started / turn records: same multiset as the insert-built shard\nPASS c: cells from a parse from scratch == insert-built cells\nPASS d: open on the insert-built shard\nPASS d: shard accepted (loaded 1, rebuilt 0)\nPASS d: restored tables == insert-built tables (session hash)\nPASS d: restart appended nothing to the shard\nidem: 0 failure(s)\n"
+   },
+   "replay": {
+    "rc": 0,
+    "tail": "22 (prefix of 722 of 788 lines, rest appended, restart): tables and shard == full parse\nPASS cut787 (prefix of 787 of 788 lines, rest appended, restart): tables and shard == full parse\nPASS cut788 (prefix of 788 of 788 lines, rest appended, restart): tables and shard == full parse\nreplay: 40 of 40 cut points equal to the full parse\nPASS torn shard: open\nPASS torn shard (last record cut): tables == full parse (loaded 1, rebuilt 0, damaged records 1)\nPASS damaged shard: open\nPASS damaged shard (40 bytes flipped): tables == full parse (loaded 1, rebuilt 0, damaged records 1)\nreplay: 0 failure(s)\n"
+   },
+   "ooo": {
+    "rc": 0,
+    "tail": "PASS open\nPASS reverse order (first 60 lines backwards, file present): tables == in-order parse\nPASS every line applied exactly once (788 of 788)\nooo: 0 failure(s)\n"
+   },
+   "pass": true,
+   "seconds": 5.1
+  },
+  "w4": {
+   "ordered_rc": 0,
+   "shuffle_same": [
+    true,
+    true,
+    true,
+    true,
+    true
+   ],
+   "pass": true,
+   "seconds": 3.3
+  },
+  "w5": {
+   "pass": true,
+   "result": {
+    "count": 200,
+    "termination": "TerminateProcess",
+    "reopen_success": 200,
+    "source_equal": true,
+    "finish": {
+     "rc": 0,
+     "ready": true,
+     "stats": [
+      9532178698350303309,
+      7865,
+      3221,
+      185,
+      3,
+      3,
+      0
+     ],
+     "stderr": ""
+    },
+    "fresh": {
+     "rc": 0,
+     "ready": true,
+     "stats": [
+      9532178698350303309,
+      7865,
+      3221,
+      185,
+      3,
+      0,
+      0
+     ],
+     "stderr": ""
+    }
+   },
+   "seconds": 19.7
+  },
+  "w6_500": {
+   "pass": true,
+   "rounds": 500,
+   "bad": 0,
+   "tail": "rounds 500 bad 0\n",
+   "seconds": 14.9
+  },
+  "samples": {
+   "3ef9dae3-a341-433f-a88b-5af6638cb92d": {
+    "total": 66,
+    "want": 66,
+    "check": "items 66 bad 0 boundary 6371165",
+    "ct_same": true
+   },
+   "845221e9-2439-4250-9d97-d8379559740a": {
+    "total": 0,
+    "want": 0,
+    "check": "items 0 bad 0 boundary None",
+    "ct_same": true
+   },
+   "99451ea7-1d67-4707-aa2a-1a365c24e255": {
+    "total": 167,
+    "want": 167,
+    "check": "items 167 bad 0 boundary 29013435",
+    "ct_same": true
+   },
+   "99451ea7-1d67-4707-aa2a-1a365c24e255/subagents/agent-acb21828acc14ffa3": {
+    "total": 17,
+    "want": 17,
+    "check": "items 17 bad 0 boundary 8488876",
+    "ct_same": true
+   },
+   "pass": true,
+   "seconds": 3.9
+  },
+  "kx4": {
+   "pass": true,
+   "ekx1": {
+    "opened_s": 10.017359972000122,
+    "idx_bytes_series": [
+     22895696,
+     81614318,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030
+    ],
+    "grow_after_open_60s": 0,
+    "ratio_to_batch": 1.0000003287040908,
+    "pass": true
+   },
+   "ekx2_conversion_errors": [],
+   "n2_m8": {
+    "runs": [
+     {
+      "run": 1,
+      "ok": true,
+      "s": 1.359,
+      "tries": 17,
+      "last_error": null
+     },
+     {
+      "run": 2,
+      "ok": true,
+      "s": 1.231,
+      "tries": 13,
+      "last_error": null
+     },
+     {
+      "run": 3,
+      "ok": true,
+      "s": 1.216,
+      "tries": 12,
+      "last_error": null
+     },
+     {
+      "run": 4,
+      "ok": true,
+      "s": 1.193,
+      "tries": 12,
+      "last_error": null
+     },
+     {
+      "run": 5,
+      "ok": true,
+      "s": 1.215,
+      "tries": 12,
+      "last_error": null
+     }
+    ],
+    "pass": true
+   },
+   "seconds": 100.0
+  }
+ },
+ "started": "2026-10-13 18:15:56",
+ "rev": "7669838494213beecb03ff963158e341262c12a3",
+ "finished": "2026-10-13 18:19:44"
+}

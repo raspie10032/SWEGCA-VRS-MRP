@@ -1,0 +1,8 @@
+SOURCE PASS prohibited_hits=0 files=7
+NEW_OBJECTS PASS prohibited_hits=0
+ALL_OBJECTS FAIL prohibited_hits=2
+LINKED_DAEMON FAIL prohibited_hits=2
+REFERENCE PASS checked=40 changed=0
+ENCODING PASS checked=13 bad=0
+vrs_lib.o: U _ZNSt8__detail11__wait_implEPKvRNS_16__wait_args_baseE
+vrs_lib.o: U _ZNSt8__detail13__notify_implEPKvbRKNS_16__wait_args_baseE

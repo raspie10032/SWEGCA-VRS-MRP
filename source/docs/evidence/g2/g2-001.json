@@ -1,0 +1,232 @@
+{
+ "id": "g2-001",
+ "branch": "ng2",
+ "tests": {
+  "build": {
+   "pass": true
+  },
+  "static": {
+   "pass": true,
+   "forbidden_symbols": [],
+   "lock_constructs": [],
+   "seconds": 0.3
+  },
+  "kwov": {
+   "pass": false,
+   "tail": "Traceback (most recent call last):\n  File \"<mcp>\\vrs-lib\\native\\work\\g2-001\\src\\tools\\kwov_test.py\", line 177, in <module>\n    main()\n  File \"<mcp>\\vrs-lib\\native\\work\\g2-001\\src\\tools\\kwov_test.py\", line 170, in main\n    result[\"g2_markers\"] = run_suite(args.daemon, work / \"g2-markers\")\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<mcp>\\vrs-lib\\native\\work\\g2-001\\src\\tools\\g2_marker_test.py\", line 155, in run_suite\n    rows = [run_case(daemon.resolve(), work / str(n), n) for n in (64, 4128)]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<mcp>\\vrs-lib\\native\\work\\g2-001\\src\\tools\\g2_marker_test.py\", line 155, in <listcomp>\n    rows = [run_case(daemon.resolve(), work / str(n), n) for n in (64, 4128)]\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<mcp>\\vrs-lib\\native\\work\\g2-001\\src\\tools\\g2_marker_test.py\", line 138, in run_case\n    assert 'conversion:' not in logs() and 'watch:' not in logs(), logs()[-3000:]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: VRS_TEST_START elapsed_us=12740\nVRS_TEST_SCAN us=871 elapsed_us=14557\nVRS_TEST_MARKERS entries=0 us=133\nVRS_TEST_WATCH_READY bytes=64\nVRS_TEST_PRELIB elapsed_us=42870 cover_reads=64 cover_sum_us=5046 skipped=0\nVRS_TEST_OPEN us=4188 elapsed_us=47058\nVRS_TEST_OVERFLOW count=1\nVRS_TEST_MARKERS entries=37 us=11192\nVRS_TEST_RESCAN count=1 us=12190\nVRS_TEST_OVERFLOW count=2\nVRS_TEST_MARKERS entries=5 us=1744\nVRS_TEST_RESCAN count=2 us=2386\nVRS_TEST_OVERFLOW count=3\nVRS_TEST_MARKERS entries=2 us=626\nVRS_TEST_RESCAN count=3 us=1250\nVRS_TEST_OVERFLOW count=4\nVRS_TEST_MARKERS entries=2 us=1096\nVRS_TEST_RESCAN count=4 us=1949\nVRS_TEST_OVERFLOW count=5\nconversion: MARKER_REMOVE_FAILED\nVRS_TEST_MARKERS entries=0 us=419\nVRS_TEST_RESCAN count=5 us=1398\nVRS_TEST_OVERFLOW count=6\nVRS_TEST_MARKERS entries=0 us=198\nVRS_TEST_RESCAN count=6 us=357\nVRS_TEST_OVERFLOW count=7\nVRS_TEST_MARKERS entries=0 us=166\nVRS_TEST_RESCAN count=7 us=359\nVRS_TEST_OVERFLOW count=8\nVRS_TEST_MARKERS entries=1 us=836\nVRS_TEST_RESCAN count=8 us=1331\nVRS_TEST_OVERFLOW count=9\nVRS_TEST_MARKERS entries=0 us=354\nVRS_TEST_RESCAN count=9 us=910\nVRS_TEST_OVERFLOW count=10\nVRS_TEST_MARKERS entries=1 us=1279\nVRS_TEST_RESCAN count=10 us=1543\nVRS_TEST_OVERFLOW count=11\nVRS_TEST_MARKERS entries=0 us=209\nVRS_TEST_RESCAN count=11 us=450\nVRS_TEST_OVERFLOW count=12\nVRS_TEST_MARKERS entries=1 us=831\nVRS_TEST_RESCAN count=12 us=1014\nVRS_TEST_OVERFLOW count=13\nVRS_TEST_MARKERS entries=1 us=1195\nVRS_TEST_RESCAN count=13 us=1403\nVRS_TEST_OVERFLOW count=14\nVRS_TEST_MARKERS entries=0 us=164\nVRS_TEST_RESCAN count=14 us=526\n\n",
+   "seconds": 2.3
+  },
+  "n1_m1": {
+   "batch": {
+    "cells_hash": "280399ba4c7e1040",
+    "ref_cells_hash": "280399ba4c7e1040",
+    "rc_list_equal": true,
+    "json_diff": [],
+    "json_diff_n": 0,
+    "ready_ms": 6030.9
+   },
+   "reopen": {
+    "cells_hash": "280399ba4c7e1040",
+    "ref_cells_hash": "280399ba4c7e1040",
+    "rc_list_equal": true,
+    "json_diff": [],
+    "json_diff_n": 0,
+    "ready_ms": 284.5
+   },
+   "pass": true,
+   "seconds": 18.1
+  },
+  "n1_kx2": {
+   "batch": {
+    "cells_hash": "03085bfb04024542",
+    "ref_cells_hash": "03085bfb04024542",
+    "rc_list_equal": true,
+    "json_diff": [],
+    "json_diff_n": 0,
+    "ready_ms": 4289.2
+   },
+   "reopen": {
+    "cells_hash": "03085bfb04024542",
+    "ref_cells_hash": "03085bfb04024542",
+    "rc_list_equal": true,
+    "json_diff": [],
+    "json_diff_n": 0,
+    "ready_ms": 710.1
+   },
+   "pass": true,
+   "seconds": 29.0
+  },
+  "w3": {
+   "idem": {
+    "rc": 0,
+    "tail": "in a row: the assembled answer equals the single insert's byte for byte (64394 bytes)\nPASS c: open on the finished file, no shard (full parse)\nPASS c: parse from scratch == insert-built tables (session hash)\nPASS c: items / turns equal\nPASS c: item / meta / task_started / turn records: same multiset as the insert-built shard\nPASS c: cells from a parse from scratch == insert-built cells\nPASS d: open on the insert-built shard\nPASS d: shard accepted (loaded 1, rebuilt 0)\nPASS d: restored tables == insert-built tables (session hash)\nPASS d: restart appended nothing to the shard\nidem: 0 failure(s)\n"
+   },
+   "replay": {
+    "rc": 0,
+    "tail": "22 (prefix of 722 of 788 lines, rest appended, restart): tables and shard == full parse\nPASS cut787 (prefix of 787 of 788 lines, rest appended, restart): tables and shard == full parse\nPASS cut788 (prefix of 788 of 788 lines, rest appended, restart): tables and shard == full parse\nreplay: 40 of 40 cut points equal to the full parse\nPASS torn shard: open\nPASS torn shard (last record cut): tables == full parse (loaded 1, rebuilt 0, damaged records 1)\nPASS damaged shard: open\nPASS damaged shard (40 bytes flipped): tables == full parse (loaded 1, rebuilt 0, damaged records 1)\nreplay: 0 failure(s)\n"
+   },
+   "ooo": {
+    "rc": 0,
+    "tail": "PASS open\nPASS reverse order (first 60 lines backwards, file present): tables == in-order parse\nPASS every line applied exactly once (788 of 788)\nooo: 0 failure(s)\n"
+   },
+   "pass": true,
+   "seconds": 5.5
+  },
+  "w4": {
+   "ordered_rc": 0,
+   "shuffle_same": [
+    true,
+    true,
+    true,
+    true,
+    true
+   ],
+   "pass": true,
+   "seconds": 3.4
+  },
+  "w5": {
+   "pass": true,
+   "result": {
+    "count": 200,
+    "termination": "TerminateProcess",
+    "reopen_success": 200,
+    "source_equal": true,
+    "finish": {
+     "rc": 0,
+     "ready": true,
+     "stats": [
+      9532178698350303309,
+      7865,
+      3221,
+      185,
+      3,
+      3,
+      0
+     ],
+     "stderr": ""
+    },
+    "fresh": {
+     "rc": 0,
+     "ready": true,
+     "stats": [
+      9532178698350303309,
+      7865,
+      3221,
+      185,
+      3,
+      0,
+      0
+     ],
+     "stderr": ""
+    }
+   },
+   "seconds": 20.2
+  },
+  "w6_500": {
+   "pass": true,
+   "rounds": 500,
+   "bad": 0,
+   "tail": "rounds 500 bad 0\n",
+   "seconds": 17.1
+  },
+  "samples": {
+   "3ef9dae3-a341-433f-a88b-5af6638cb92d": {
+    "total": 66,
+    "want": 66,
+    "check": "items 66 bad 0 boundary 6371165",
+    "ct_same": true
+   },
+   "845221e9-2439-4250-9d97-d8379559740a": {
+    "total": 0,
+    "want": 0,
+    "check": "items 0 bad 0 boundary None",
+    "ct_same": true
+   },
+   "99451ea7-1d67-4707-aa2a-1a365c24e255": {
+    "total": 167,
+    "want": 167,
+    "check": "items 167 bad 0 boundary 29013435",
+    "ct_same": true
+   },
+   "99451ea7-1d67-4707-aa2a-1a365c24e255/subagents/agent-acb21828acc14ffa3": {
+    "total": 17,
+    "want": 17,
+    "check": "items 17 bad 0 boundary 8488876",
+    "ct_same": true
+   },
+   "pass": true,
+   "seconds": 3.7
+  },
+  "kx4": {
+   "pass": true,
+   "ekx1": {
+    "opened_s": 5.007339715957642,
+    "idx_bytes_series": [
+     891249,
+     79139006,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030,
+     97352030
+    ],
+    "grow_after_open_60s": 0,
+    "ratio_to_batch": 1.0000003287040908,
+    "pass": true
+   },
+   "ekx2_conversion_errors": [],
+   "n2_m8": {
+    "runs": [
+     {
+      "run": 1,
+      "ok": true,
+      "s": 1.282,
+      "tries": 12,
+      "last_error": null
+     },
+     {
+      "run": 2,
+      "ok": true,
+      "s": 1.203,
+      "tries": 12,
+      "last_error": null
+     },
+     {
+      "run": 3,
+      "ok": true,
+      "s": 1.202,
+      "tries": 12,
+      "last_error": null
+     },
+     {
+      "run": 4,
+      "ok": true,
+      "s": 1.228,
+      "tries": 12,
+      "last_error": null
+     },
+     {
+      "run": 5,
+      "ok": true,
+      "s": 1.198,
+      "tries": 12,
+      "last_error": null
+     }
+    ],
+    "pass": true
+   },
+   "seconds": 95.2
+  }
+ },
+ "started": "2026-10-13 18:04:16",
+ "rev": "6ad2c15fe414df988e752f87603d8c93a31d44bf",
+ "finished": "2026-10-13 18:08:14"
+}

@@ -1,0 +1,51 @@
+{
+ "id": "g2-008",
+ "branch": "ng2",
+ "tests": {
+  "build": {
+   "pass": true
+  },
+  "static": {
+   "pass": true,
+   "forbidden_symbols": [],
+   "lock_constructs": [],
+   "seconds": 0.2
+  },
+  "kwov": {
+   "pass": true,
+   "tail": "{\"recovered_message_lines\": 164, \"final_message_lines\": 166, \"pass\": true, \"files\": 36, \"covers_equal_eof\": true, \"overflow_count\": 95, \"rescan_count\": 95, \"restore_calls\": 0, \"metrics\": [\"VRS_TEST_START elapsed_us=1728\", \"VRS_TEST_SCAN us=801 elapsed_us=3466\", \"VRS_TEST_PRELIB elapsed_us=22074 cover_reads=32 cover_sum_us=5179 skipped=0\", \"VRS_TEST_OPEN us=5489 elapsed_us=27564\"], \"g2_markers\": {\"pass\": true, \"writer_contract\": \"post-append publish P\", \"cases\": [{\"initial_files\": 64, \"changed_files\": 37, \"recovered_messages\": 69, \"final_messages\": 136, \"concurrent_publications\": 64, \"marker_scans\": [[0, 106], [37, 15083], [2, 959], [0, 132], [0, 90]], \"recovered_us\": 52090.5, \"hook_process_median_us\": 9634.1, \"hook_process_max_us\": 13528.1, \"overflow_count\": 92, \"remaining_markers\": 0, \"restore_calls\": 0, \"pass\": true}, {\"initial_files\": 4128, \"changed_files\": 37, \"recovered_messages\": 69, \"final_messages\": 136, \"concurrent_publications\": 64, \"marker_scans\": [[0, 352], [37, 14953], [7, 2606], [1, 468], [1, 387], [0, 216]], \"recovered_us\": 522410.8, \"hook_process_median_us\": 9884.1, \"hook_process_max_us\": 26440.4, \"overflow_count\": 92, \"remaining_markers\": 0, \"restore_calls\": 0, \"pass\": true}]}}\n",
+   "seconds": 13.1
+  },
+  "samples": {
+   "3ef9dae3-a341-433f-a88b-5af6638cb92d": {
+    "total": 66,
+    "want": 66,
+    "check": "items 66 bad 0 boundary 6371165",
+    "ct_same": true
+   },
+   "845221e9-2439-4250-9d97-d8379559740a": {
+    "total": 0,
+    "want": 0,
+    "check": "items 0 bad 0 boundary None",
+    "ct_same": true
+   },
+   "99451ea7-1d67-4707-aa2a-1a365c24e255": {
+    "total": 167,
+    "want": 167,
+    "check": "items 167 bad 0 boundary 29013435",
+    "ct_same": true
+   },
+   "99451ea7-1d67-4707-aa2a-1a365c24e255/subagents/agent-acb21828acc14ffa3": {
+    "total": 17,
+    "want": 17,
+    "check": "items 17 bad 0 boundary 8488876",
+    "ct_same": true
+   },
+   "pass": true,
+   "seconds": 3.8
+  }
+ },
+ "started": "2026-10-13 18:28:26",
+ "rev": "20afbcd3bc2a0cd4487617d895c19e44256b0709",
+ "finished": "2026-10-13 18:29:33"
+}

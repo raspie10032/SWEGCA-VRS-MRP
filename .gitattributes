@@ -1,0 +1,3 @@
+# Keep every file byte-exact on checkout (SHA256SUMS.txt is checked by install.py).
+* -text
+*.exe binary

@@ -1,0 +1,14 @@
+{
+  "revision": "20afbcd3bc2a0cd4487617d895c19e44256b0709",
+  "files": {
+    "src/cc_markers.hpp": "f3dbe52ece7598e5671b803a09149606f2d58f4131ded8750b9bab177d1397db",
+    "src/vrs_ccd.cpp": "803c64223eb9af3ab610b6ec869b29ba68eb3fc368d94e469851d59c616330c5",
+    "src/cc_conv.cpp": "d2f94540c8cc52e8f53c3f0a46ec9682002538c911c0764a2a9c1112fbb27826",
+    "src/cc_conv.hpp": "40c51618bc33d4aedae7f499e0fdaf2f655a235c4b367e56dc35732e8c4a5dc2",
+    "native/libvrs/vrs_lib.cpp": "bb8b63dcd8f6df31bdde7f527b4276716bd63636be7b2bdfce5cd250ed4bd929",
+    "native/libvrs/vrs_plat_win.cpp": "a0a062549f4f3b0db5c97e65004e7c9a549917b49b7181866e698452d2492d93",
+    "src/cc_io.hpp": "1910a39c38202d3247d12a6e21ec940b6c27aca3f7f93755000b091df01114af"
+  },
+  "linux_daemon_sha256": "d38bf798385835be82c030c1acc0030207bae4afff00b79f64124405df3ded0e",
+  "judgment_source_diff_from_0d40fe5": ""
+}

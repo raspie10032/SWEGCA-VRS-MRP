@@ -1,0 +1,17 @@
+{
+ "id": "g2-004",
+ "branch": "ng2",
+ "tests": {
+  "build": {
+   "pass": true
+  },
+  "kwov": {
+   "pass": false,
+   "tail": "e \"<mcp>\\vrs-lib\\native\\work\\g2-004\\src\\tools\\g2_marker_test.py\", line 168, in <listcomp>\n    rows = [run_case(daemon.resolve(), work / str(n), n) for n in (64, 4128)]\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<mcp>\\vrs-lib\\native\\work\\g2-004\\src\\tools\\g2_marker_test.py\", line 151, in run_case\n    assert not errors, logs()[-2500:] + '\\nALL_ERRORS: ' + repr(errors)\n           ^^^^^^^^^^\nAssertionError: T_MARKERS entries=1 us=1584\nVRS_TEST_RESCAN count=53 us=2127\nVRS_TEST_OVERFLOW count=54\nVRS_TEST_MARKERS entries=1 us=1315\nVRS_TEST_RESCAN count=54 us=1594\nVRS_TEST_OVERFLOW count=55\nVRS_TEST_MARKERS entries=0 us=160\nVRS_TEST_RESCAN count=55 us=437\nVRS_TEST_OVERFLOW count=56\nVRS_TEST_MARKERS entries=0 us=160\nVRS_TEST_RESCAN count=56 us=365\nVRS_TEST_OVERFLOW count=57\nVRS_TEST_MARKERS entries=1 us=1006\nVRS_TEST_RESCAN count=57 us=1361\nVRS_TEST_OVERFLOW count=58\nVRS_TEST_MARKERS entries=0 us=287\nVRS_TEST_RESCAN count=58 us=683\nVRS_TEST_OVERFLOW count=59\nVRS_TEST_MARKERS entries=0 us=409\nVRS_TEST_RESCAN count=59 us=981\nVRS_TEST_OVERFLOW count=60\nVRS_TEST_MARKERS entries=1 us=1484\nVRS_TEST_RESCAN count=60 us=1784\nVRS_TEST_OVERFLOW count=61\nVRS_TEST_MARKERS entries=0 us=293\nVRS_TEST_RESCAN count=61 us=1035\nVRS_TEST_OVERFLOW count=62\nVRS_TEST_MARKERS entries=0 us=174\nVRS_TEST_RESCAN count=62 us=520\nVRS_TEST_OVERFLOW count=63\nVRS_TEST_MARKERS entries=1 us=1310\nVRS_TEST_RESCAN count=63 us=1760\nVRS_TEST_OVERFLOW count=64\nVRS_TEST_MARKERS entries=0 us=462\nVRS_TEST_RESCAN count=64 us=793\nVRS_TEST_OVERFLOW count=65\nVRS_TEST_MARKERS entries=0 us=198\nVRS_TEST_RESCAN count=65 us=502\nVRS_TEST_OVERFLOW count=66\nVRS_TEST_MARKERS entries=1 us=758\nVRS_TEST_RESCAN count=66 us=1271\nVRS_TEST_OVERFLOW count=67\nVRS_TEST_MARKERS entries=0 us=179\nVRS_TEST_RESCAN count=67 us=653\nVRS_TEST_OVERFLOW count=68\nVRS_TEST_MARKERS entries=1 us=2152\nVRS_TEST_RESCAN count=68 us=2639\nVRS_TEST_OVERFLOW count=69\nVRS_TEST_MARKERS entries=0 us=302\nVRS_TEST_RESCAN count=69 us=732\nVRS_TEST_OVERFLOW count=70\nVRS_TEST_MARKERS entries=0 us=281\nVRS_TEST_RESCAN count=70 us=730\nVRS_TEST_OVERFLOW count=71\nVRS_TEST_MARKERS entries=1 us=1977\nVRS_TEST_RESCAN count=71 us=2445\nVRS_TEST_OVERFLOW count=72\nVRS_TEST_MARKERS entries=1 us=16303\nVRS_TEST_RESCAN count=72 us=16724\nVRS_TEST_OVERFLOW count=73\nVRS_TEST_MARKERS entries=0 us=348\nVRS_TEST_RESCAN count=73 us=785\nVRS_TEST_OVERFLOW count=74\nVRS_TEST_MARKERS entries=1 us=850\nVRS_TEST_RESCAN count=74 us=1182\nVRS_TEST_OVERFLOW count=75\nVRS_TEST_MARKERS entries=0 us=221\nVRS_TEST_RESCAN count=75 us=528\nVRS_TEST_OVERFLOW count=76\nVRS_TEST_MARKERS entries=0 us=237\nVRS_TEST_RESCAN count=76 us=495\nVRS_TEST_OVERFLOW count=77\nVRS_TEST_MARKERS entries=1 us=1384\nVRS_TEST_RESCAN count=77 us=1837\nVRS_TEST_OVERFLOW count=78\nVRS_TEST_MARKERS entries=0 us=442\nVRS_TEST_RESCAN count=78 us=631\nVRS_TEST_OVERFLOW count=79\nVRS_TEST_MARKERS entries=0 us=159\nVRS_TEST_RESCAN count=79 us=321\n\nALL_ERRORS: ['conversion: MARKER_DELETE_OPEN_5']\n",
+   "seconds": 2.3
+  }
+ },
+ "started": "2026-10-13 18:12:10",
+ "rev": "4814f7d4875157ee2e384e1ab727f52f53263786",
+ "finished": "2026-10-13 18:12:56"
+}

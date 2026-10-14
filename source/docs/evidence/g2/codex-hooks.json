@@ -1,0 +1,422 @@
+{
+  "process_rc": 0,
+  "command": [
+    "codex",
+    "exec",
+    "--skip-git-repo-check",
+    "--dangerously-bypass-hook-trust",
+    "-C",
+    "$HOME/tmp/vrsnative/wt/g2/.g2/hooks-1/cwd",
+    "Return the synthetic response. Do not call tools."
+  ],
+  "version": "codex-cli 0.153.4",
+  "boundary": "real installed CLI, synthetic localhost model, isolated settings",
+  "observations": [
+    {
+      "at_ns": 179495054850466,
+      "label": "SessionStart",
+      "states": [
+        {
+          "path": "$HOME/tmp/vrsnative/wt/g2/.g2/hooks-1/home/sessions/2026/10/13/rollout-2026-10-13T18-05-17-01a13482-4cda-7d13-a009-95a3b128edae.jsonl",
+          "bytes": 31874,
+          "kinds": [
+            [
+              "session_meta",
+              null,
+              null
+            ],
+            [
+              "event_msg",
+              "task_started",
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "developer"
+            ],
+            [
+              "response_item",
+              "message",
+              "user"
+            ],
+            [
+              "world_state",
+              null,
+              null
+            ],
+            [
+              "turn_context",
+              null,
+              null
+            ]
+          ]
+        }
+      ],
+      "transcript_path": "$HOME/tmp/vrsnative/wt/g2/.g2/hooks-1/home/sessions/2026/10/13/rollout-2026-10-13T18-05-17-01a13482-4cda-7d13-a009-95a3b128edae.jsonl"
+    },
+    {
+      "at_ns": 179495105212900,
+      "label": "UserPromptSubmit",
+      "states": [
+        {
+          "path": "$HOME/tmp/vrsnative/wt/g2/.g2/hooks-1/home/sessions/2026/10/13/rollout-2026-10-13T18-05-17-01a13482-4cda-7d13-a009-95a3b128edae.jsonl",
+          "bytes": 31874,
+          "kinds": [
+            [
+              "session_meta",
+              null,
+              null
+            ],
+            [
+              "event_msg",
+              "task_started",
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "developer"
+            ],
+            [
+              "response_item",
+              "message",
+              "user"
+            ],
+            [
+              "world_state",
+              null,
+              null
+            ],
+            [
+              "turn_context",
+              null,
+              null
+            ]
+          ]
+        }
+      ],
+      "transcript_path": "$HOME/tmp/vrsnative/wt/g2/.g2/hooks-1/home/sessions/2026/10/13/rollout-2026-10-13T18-05-17-01a13482-4cda-7d13-a009-95a3b128edae.jsonl"
+    },
+    {
+      "at_ns": 179495521216752,
+      "label": "mid-response-no-lifecycle-event",
+      "states": [
+        {
+          "path": "$HOME/tmp/vrsnative/wt/g2/.g2/hooks-1/home/sessions/2026/10/13/rollout-2026-10-13T18-05-17-01a13482-4cda-7d13-a009-95a3b128edae.jsonl",
+          "bytes": 33519,
+          "kinds": [
+            [
+              "session_meta",
+              null,
+              null
+            ],
+            [
+              "event_msg",
+              "task_started",
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "developer"
+            ],
+            [
+              "response_item",
+              "message",
+              "user"
+            ],
+            [
+              "world_state",
+              null,
+              null
+            ],
+            [
+              "turn_context",
+              null,
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "user"
+            ],
+            [
+              "event_msg",
+              "item_completed",
+              null
+            ],
+            [
+              "event_msg",
+              "item_completed",
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "assistant"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "at_ns": 179495576238084,
+      "label": "Stop",
+      "states": [
+        {
+          "path": "$HOME/tmp/vrsnative/wt/g2/.g2/hooks-1/home/sessions/2026/10/13/rollout-2026-10-13T18-05-17-01a13482-4cda-7d13-a009-95a3b128edae.jsonl",
+          "bytes": 35713,
+          "kinds": [
+            [
+              "session_meta",
+              null,
+              null
+            ],
+            [
+              "event_msg",
+              "task_started",
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "developer"
+            ],
+            [
+              "response_item",
+              "message",
+              "user"
+            ],
+            [
+              "world_state",
+              null,
+              null
+            ],
+            [
+              "turn_context",
+              null,
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "user"
+            ],
+            [
+              "event_msg",
+              "item_completed",
+              null
+            ],
+            [
+              "event_msg",
+              "item_completed",
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "assistant"
+            ],
+            [
+              "event_msg",
+              "item_completed",
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "assistant"
+            ],
+            [
+              "token_usage_record",
+              null,
+              null
+            ],
+            [
+              "event_msg",
+              "token_count",
+              null
+            ]
+          ]
+        }
+      ],
+      "transcript_path": "$HOME/tmp/vrsnative/wt/g2/.g2/hooks-1/home/sessions/2026/10/13/rollout-2026-10-13T18-05-17-01a13482-4cda-7d13-a009-95a3b128edae.jsonl"
+    },
+    {
+      "at_ns": 179495647788215,
+      "label": "SessionEnd",
+      "states": [
+        {
+          "path": "$HOME/tmp/vrsnative/wt/g2/.g2/hooks-1/home/sessions/2026/10/13/rollout-2026-10-13T18-05-17-01a13482-4cda-7d13-a009-95a3b128edae.jsonl",
+          "bytes": 36016,
+          "kinds": [
+            [
+              "session_meta",
+              null,
+              null
+            ],
+            [
+              "event_msg",
+              "task_started",
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "developer"
+            ],
+            [
+              "response_item",
+              "message",
+              "user"
+            ],
+            [
+              "world_state",
+              null,
+              null
+            ],
+            [
+              "turn_context",
+              null,
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "user"
+            ],
+            [
+              "event_msg",
+              "item_completed",
+              null
+            ],
+            [
+              "event_msg",
+              "item_completed",
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "assistant"
+            ],
+            [
+              "event_msg",
+              "item_completed",
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "assistant"
+            ],
+            [
+              "token_usage_record",
+              null,
+              null
+            ],
+            [
+              "event_msg",
+              "token_count",
+              null
+            ],
+            [
+              "event_msg",
+              "task_complete",
+              null
+            ]
+          ]
+        }
+      ],
+      "transcript_path": "$HOME/tmp/vrsnative/wt/g2/.g2/hooks-1/home/sessions/2026/10/13/rollout-2026-10-13T18-05-17-01a13482-4cda-7d13-a009-95a3b128edae.jsonl"
+    },
+    {
+      "at_ns": 179496022950149,
+      "label": "process-exit",
+      "states": [
+        {
+          "path": "$HOME/tmp/vrsnative/wt/g2/.g2/hooks-1/home/sessions/2026/10/13/rollout-2026-10-13T18-05-17-01a13482-4cda-7d13-a009-95a3b128edae.jsonl",
+          "bytes": 36016,
+          "kinds": [
+            [
+              "session_meta",
+              null,
+              null
+            ],
+            [
+              "event_msg",
+              "task_started",
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "developer"
+            ],
+            [
+              "response_item",
+              "message",
+              "user"
+            ],
+            [
+              "world_state",
+              null,
+              null
+            ],
+            [
+              "turn_context",
+              null,
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "user"
+            ],
+            [
+              "event_msg",
+              "item_completed",
+              null
+            ],
+            [
+              "event_msg",
+              "item_completed",
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "assistant"
+            ],
+            [
+              "event_msg",
+              "item_completed",
+              null
+            ],
+            [
+              "response_item",
+              "message",
+              "assistant"
+            ],
+            [
+              "token_usage_record",
+              null,
+              null
+            ],
+            [
+              "event_msg",
+              "token_count",
+              null
+            ],
+            [
+              "event_msg",
+              "task_complete",
+              null
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}
