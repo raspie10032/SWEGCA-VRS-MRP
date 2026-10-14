@@ -1196,3 +1196,25 @@
 - 결함:
   - KM6d — 첫 색인(빈 data)이 끝나기 전 약 25 s 동안 복원이 안 되고, 모델은 NOT_READY 뒤 다시 부르지 않고 모른다고 답할 수 있다. 층은 아직 가르지 않았다(첫 색인이 어떤 차례로 도는지 보지 않음), G 영향은 늦춤(라이브 data 는 데우진 상태라 재시작이 1.2–1.5 s 다; 빈 data 는 첫 설치·data 유실 때만 생긴다).
   - KM6c 는 이 시험 조건(빈 data)으로는 불통과로 남긴다. 결과를 보고 기준을 바꾸지 않는다.
+### 14.21 플러그인 1.1.0 — 파이썬 없는 설치 (2026-10-14)
+
+- 사용자 원문: 「ㅇㅇ 플러그인으로 ㄱㄱ 파이선도 뭐... 최대한 설치할거 없는 방향으로 진행해 단, 불필요한 테스트 절대로 하지마」
+- 정의:
+  - D-P1: MCP 다리를 `vrs_ccd.exe --mcp` 로 옮긴다(src/cc_mcp.cpp). 함수는 src/bridge/vrs_lib_bridge.py 와 같다: 도구 두 개·인자 검사·4대 부모 안에서 세션 확인(pid·procStart·sessionId)·초기화 때 데몬 띄우기(KM6a)·NOT_READY 문구(KM6b)·5초 연결 한도.
+  - L1·L2 는 그대로이고 L3(구현 언어)만 바뀐다. 요청은 파이썬 판과 같이 한 줄씩 처리한다.
+  - D-P2: 훅 `--hook writer`(= `--writer-hook <data>/writer-markers --host claude`)와 `--hook compact`(= hook_compact.py 안내)를 둔다.
+  - 데이터 폴더는 `VRS_CC_DATA`, 없으면 `CLAUDE_PLUGIN_DATA`, 없으면 `<claude home>/vrs-lib` 이다. 훅과 MCP 서버가 같은 플러그인 데이터 폴더를 받으므로 둘이 같은 곳을 본다.
+  - D-P3: 배포 단위는 Claude Code 플러그인이다. 이 저장소 하나가 마켓플레이스이자 플러그인이고, 훅은 셸 없는 exec 형식(`command`+`args`)으로 부른다.
+- 끝 조건(실행 전에 적음):
+  - 빌드와 정적 검사(금지 심볼·잠금 0) 통과.
+  - `claude plugin validate` 통과.
+  - `--plugin-dir` 한 번 실행에서 MCP 연결, 도구 두 개, vrs_restore 가 부른 세션을 찾음, 쓰기 표지가 생김.
+- 결과:
+  - 빌드 c9bd11a 에서 정적 검사는 통과했다.
+  - 첫 실행에서 MCP 가 pending 에 머물렀다(쓰기 표지와 compact 훅은 정상).
+    - 원인(L3): 표준 입력을 `fread` 로 읽어 64 KiB 가 찰 때까지 기다렸다.
+    - `ReadFile` 로 고쳤다(cdca61c, 정적 검사 통과).
+  - 둘째 실행: 도구 두 개(`mcp__plugin_vrs-lib_vrs-lib__*`)가 잡혔다.
+    - 첫 색인 동안 NOT_READY×8 이 나온 뒤 vrs_restore 가 부른 세션 id 를 찾았다.
+    - 쓰기 표지는 첫 실행에서 플러그인 데이터 폴더에 생겼다.
+- 시험은 이 끝 조건만 했다. 압축 뒤 회수(M6 류)는 다시 돌리지 않았다. 엔진·데몬 코드가 그대로이기 때문이다.

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "vrs-lib": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/vrs_ccd.exe",
+      "args": ["--mcp"]
+    }
+  }
+}

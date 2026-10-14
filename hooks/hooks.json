@@ -1,0 +1,12 @@
+{
+  "description": "vrs-lib: writer markers for open sessions, and the post-compaction guidance.",
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/vrs_ccd.exe", "args": ["--hook", "writer"] } ] },
+      { "matcher": "compact", "hooks": [ { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/vrs_ccd.exe", "args": ["--hook", "compact"] } ] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/vrs_ccd.exe", "args": ["--hook", "writer"] } ] }
+    ]
+  }
+}

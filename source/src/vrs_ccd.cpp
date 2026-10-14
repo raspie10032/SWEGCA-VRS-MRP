@@ -4,6 +4,7 @@
 #include "cc_conv.hpp"
 #include "cc_markers.hpp"
 #include "vrs_witness.h"
+#include "cc_mcp.hpp"
 #include <chrono>
 #include <csignal>
 #include <iostream>
@@ -823,30 +824,11 @@ int main(int argc, char** argv) {
             cc::fs::create_directories(vp_io_path(argv[2]));
             vw::publish(cc::canonical(argv[2]), vw::owner(argv[4], std::stoull(argv[6]))); return 0;
         }
-        if (argc == 5 && std::string(argv[1]) == "--writer-hook" && std::string(argv[3]) == "--host") {
-            std::string input; char buf[4096];
-            while (size_t n = std::fread(buf, 1, sizeof buf, stdin)) {
-                input.append(buf, n); if (input.size() > 1024 * 1024) throw std::runtime_error("HOOK_INPUT_TOO_LARGE");
-            }
-            const auto j = cc::parse(input);
-            const auto source = j.at("transcript_path").text();
-            std::string home;
-            if (std::string(argv[4]) == "claude") {
-                const char* h = std::getenv("CLAUDE_CONFIG_DIR");
-                if (h) home = h;
-                else {
-#ifdef _WIN32
-                    h = std::getenv("USERPROFILE");
-#else
-                    h = std::getenv("HOME");
-#endif
-                    if (!h) throw std::runtime_error("WRITER_HOME_UNAVAILABLE");
-                    home = std::string(h) + "/.claude";
-                }
-            }
-            const auto w = vw::hook_owner(source, j.at("session_id").text(), argv[4], home);
-            cc::fs::create_directories(vp_io_path(argv[2])); vw::publish(cc::canonical(argv[2]), w); return 0;
-        }
+        // D-P1/D-P2 (doc 14.21): the plugin runs this one executable as its MCP server and as its hooks.
+        if (argc == 2 && std::string(argv[1]) == "--mcp") return cc::mcp_main();
+        if (argc == 3 && std::string(argv[1]) == "--hook") return cc::hook_main(argv[2]);
+        if (argc == 5 && std::string(argv[1]) == "--writer-hook" && std::string(argv[3]) == "--host")
+            return cc::writer_hook(argv[2], argv[4]);
         if (argc == 5 && std::string(argv[1]) == "--mark-root" && std::string(argv[3]) == "--mark-path") {
             const std::string root = cc::canonical(argv[2]);
             cc::marker_directories(root); cc::marker_publish(root, cc::canonical(argv[4])); return 0;

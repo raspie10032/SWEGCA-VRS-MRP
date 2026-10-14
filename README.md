@@ -1,11 +1,33 @@
-# vrs-lib 1.0.0
+# vrs-lib 1.1.0
 
-Claude Code(Windows)용 MCP 서버입니다. 컨텍스트 압축은 그대로 두고, 압축 뒤에 **압축 전 원문**(사용자 발화와 답)을 바이트 그대로 돌려주는 데만 씁니다.
+Claude Code(Windows)용 플러그인입니다. 컨텍스트 압축은 그대로 두고, 압축 뒤에 **압축 전 원문**(사용자 발화와 답)을 바이트 그대로 돌려주는 데만 씁니다.
 
 - 엔진: libvrs lib7(동결본)을 Windows 네이티브로 옮긴 것입니다.
-- `source/` 는 개발 저장소 태그 `v1.0.0`(커밋 `fc46464`)의 소스 전체입니다. `bin/vrs_ccd.exe` 는 이 소스로 빌드한 것입니다.
+- 실행 파일 하나(`bin/vrs_ccd.exe`)가 데몬, MCP 서버, 훅을 모두 맡습니다. **파이썬도 설치기도 필요 없습니다.**
+- `source/` 는 개발 저장소 `plugin` 브랜치(커밋 `cdca61c`)의 소스 전체이고, `bin/vrs_ccd.exe` 는 이 소스로 빌드한 것입니다.
+
+## 설치
+
+Claude Code 에서:
+
+```
+/plugin install vrs-lib --marketplace raspie10032/vrs-lib
+```
+
+또는 터미널에서:
+
+```bash
+claude plugin install vrs-lib --marketplace raspie10032/vrs-lib
+```
+
+- 비공개 저장소라서, 이 PC 의 git 이 GitHub 에 로그인돼 있어야 합니다(`gh auth login` 뒤 `gh auth setup-git`, 또는 Git Credential Manager).
+- 설치 뒤 **새로 연 세션부터** 적용됩니다.
+- 데스크톱 앱에서는 **+ → Plugins** 에서 관리합니다.
+- 업데이트는 `/plugin` 메뉴에서, 제거는 `claude plugin uninstall vrs-lib` 로 합니다. 제거하면 플러그인 데이터 폴더(색인)도 지워집니다. 남기려면 `--keep-data` 를 붙입니다.
 
 ## 도구
+
+플러그인 도구 이름은 `mcp__plugin_vrs-lib_vrs-lib__vrs_restore` 와 `mcp__plugin_vrs-lib_vrs-lib__vrs_read` 입니다.
 
 | 도구 | 인자 | 하는 일 |
 |---|---|---|
@@ -14,66 +36,23 @@ Claude Code(Windows)용 MCP 서버입니다. 컨텍스트 압축은 그대로 �
 
 `NOT_READY` 는 색인을 준비하는 중이라는 뜻이지 원문이 없다는 뜻이 아닙니다. 몇 초 뒤 같은 인자로 다시 부르면 됩니다.
 
-## 설치
+## 플러그인이 하는 일
 
-요구 사항: Windows 10/11 x64, Claude Code, Git, CPython 3(시험한 판 3.11; Microsoft Store 의 `python` 스텁은 안 됨).
-
-```bash
-git clone https://github.com/raspie10032/vrs-lib.git vrs-lib
-```
-
-비공개 저장소라 클론하려면 이 저장소에 접근 권한이 있는 GitHub 계정으로 로그인돼 있어야 합니다(`gh auth login` 이나 Git Credential Manager).
-
-```bash
-cd vrs-lib
-```
-
-```bash
-python install.py
-```
-
-- **클론한 폴더가 곧 설치 위치입니다.** 훅과 MCP 항목이 이 폴더를 가리키므로 지우거나 옮기지 마세요. 옮겼다면 `python install.py` 를 다시 실행합니다.
-- 설치기가 하는 일:
-  - `bin/vrs_ccd.exe`·다리·훅이 `SHA256SUMS.txt` 와 맞는지 확인합니다. 줄바꿈 변환 같은 손상이 있으면 멈춥니다.
-  - `~/.claude/settings.json` 을 `settings.json.bak-vrslib-<시각>` 으로 백업합니다.
-  - 그 파일의 vrs-lib 훅 세 개를 넣거나 바꿉니다: SessionStart 전체(쓰기 표지), SessionStart compact(안내), UserPromptSubmit(쓰기 표지).
-  - MCP 서버 `vrs-lib` 를 사용자 범위로 등록합니다(`claude mcp add-json -s user`).
-- `claude` CLI 는 PATH 에서 찾고, 없으면 데스크톱 앱에 든 것을 찾습니다. 그래도 못 찾으면 등록 명령만 출력합니다. `--claude <경로>` 로 직접 줄 수도 있습니다.
-- 데이터 폴더는 기본 `%USERPROFILE%\.vrs-lib\data` 입니다. `--data <폴더>` 로 바꿉니다.
-- 다시 실행하면 이전 vrs-lib 항목을 바꿔 넣고, 겹쳐 넣지 않습니다. 새로 여는 세션부터 적용됩니다.
-
-**이미 다른 판의 데몬이 떠 있으면** 다리가 그 데몬에 붙습니다(파이프가 사용자마다 하나). 바꾸려면 세션을 모두 닫고 `Get-Process vrs_ccd | Stop-Process` 로 데몬을 끝낸 뒤 새 세션을 엽니다.
-
-## 업데이트
-
-```bash
-git pull
-```
-
-```bash
-python install.py
-```
-
-## 제거
-
-```bash
-python uninstall.py
-```
-
-- 훅과 MCP 항목을 지웁니다.
-- 데이터 폴더와 클론한 폴더는 지우지 않습니다.
-- 데몬은 따로 떠 있는 프로세스라 계속 돕니다. 끝내려면 `Get-Process vrs_ccd | Stop-Process` 를 실행합니다.
+- **MCP 서버** (`.mcp.json`): `vrs_ccd.exe --mcp`. 초기화 때 데몬이 없으면 띄우고 기다리지 않습니다.
+- **훅** (`hooks/hooks.json`):
+  - 세션 시작과 프롬프트 입력 때 `--hook writer`: 열린 세션의 쓰기 표지를 남깁니다.
+  - 압축 직후 `--hook compact`: 「요약은 원문이 아니니 vrs_restore 로 확인하라」는 안내를 넣습니다.
+- **데이터 폴더** 는 플러그인 데이터 폴더(`~/.claude/plugins/data/…`)입니다. `VRS_CC_DATA` 환경 변수로 바꿀 수 있습니다.
 
 ## 저장소 구성
 
 | 경로 | 내용 |
 |---|---|
-| `bin/vrs_ccd.exe` | 데몬과 쓰기 표지 훅(`--writer-hook`)이 든 단일 실행 파일 |
-| `bridge/vrs_lib_bridge.py` | MCP stdio 다리. 표준 라이브러리만 씁니다. MCP 초기화 때 데몬이 없으면 띄우고, 기다리지 않습니다. |
-| `hooks/hook_compact.py` | 압축 직후 「요약은 원문이 아니니 vrs_restore 로 확인하라」 안내 |
-| `install.py`, `uninstall.py` | 설치·제거 |
-| `docs/VRS_MCP_libvrs_v1.md` | 설계·검증 문서(§14.20까지) |
-| `source/` | 태그 v1.0.0 소스 |
+| `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` | 플러그인과 마켓플레이스(이 저장소 하나) |
+| `.mcp.json`, `hooks/hooks.json` | MCP 서버와 훅 선언 |
+| `bin/vrs_ccd.exe` | 데몬·MCP 서버·훅이 든 단일 실행 파일 |
+| `docs/VRS_MCP_libvrs_v1.md` | 설계·검증 문서 |
+| `source/` | 빌드한 소스 |
 | `SHA256SUMS.txt`, `VERSION`, `THIRD_PARTY_NOTICES.md` | 해시, 판, 제3자 고지(mimalloc, MIT) |
 ## 검증 요약
 
@@ -94,4 +73,6 @@ python uninstall.py
 
 - **첫 색인 창 (KM6d)**: 빈 데이터 폴더로 처음 띄우면 `~/.claude/projects` 전체를 색인하는 동안(이 PC 기준 약 25 s) `NOT_READY` 가 나옵니다. 이 동안 모델이 다시 부르지 않고 모른다고 답할 수 있습니다. 한 번 색인한 뒤의 재시작은 1–2 s 입니다.
 - **교체 직후 느린 첫 응답 (KL2)**: 라이브 교체 직후 첫 응답이 5–7 s 걸린 적이 두 번 있습니다. 재현되지 않았고 원인은 아직 모릅니다.
+- **다른 데몬이 먼저 떠 있으면**: 파이프 이름이 사용자마다 하나라서, 예전 수동 설치(1.0.0)의 데몬이 떠 있으면 플러그인이 그 데몬에 붙습니다. 1.0.0 을 쓰던 PC 는 예전 MCP·훅을 지우고 `Get-Process vrs_ccd | Stop-Process` 로 데몬을 끝낸 뒤 새 세션을 엽니다.
+- **업데이트 직후**: 떠 있는 데몬은 이전 판 폴더의 실행 파일로 계속 돕니다. 새 판 데몬으로 바꾸려면 위와 같이 데몬을 끝냅니다.
 - 세션을 넘는 회수와 질의 회수는 이 판에 없습니다.
