@@ -751,12 +751,12 @@ class Daemon {
                 }
                 text += head + body;
                 Json it = Json::obj(); it.set("app", Json::str(app ? "codex" : "claude")).set("session", Json::str(session)).set("path", Json::str(p.path))
-                    .set("o0", Json::num(p.o0)).set("w", r.at("w")).set("m", r.at("m")).set("view", std::move(vj));
+                    .set("o0", Json::num(p.o0)).set("w", r.at("w")).set("m", r.at("m")).set("dmin", r.at("dmin")).set("view", std::move(vj));
                 items.values.push_back(std::move(it));
             }
             out.set("items", std::move(items));
         }
-        out.set("text", Json::str(text)).set("utf16", Json::num(utf16_units(text)));
+        out.set("text", Json::str(text)).set("utf16", Json::num(utf16_units(text))).set("cues", res.at("cues"));
         return out;
     }
     // D-q8′ and the lib7 query of a request: W(t) and the rows (shared by search and K6 recall); caller = the caller's original file

@@ -1377,14 +1377,22 @@ std::string k5_recall_json(Store& S, const std::string& text, const std::vector<
   for (size_t i = 0; i < q.Q.size(); i++) { if (i) o += ","; o += "[" + loc_quote(q.qtext[i]) + "," + std::to_string(q.d[i]) + "]"; }
   o += "],\"rows\":[";
   const Sess* own = caller.empty() ? nullptr : get_sess(S, canon_path(S, caller.c_str()), false);
-  size_t n = 0; double wstar = 0;
+  // D-s1′: the tier of w* among the rows not of the caller's file, by (dmin ↑, then ≺); dmin = the rarest d of a cue of Q in K(y), cut at 65
+  std::vector<std::pair<uint64_t, const K5Q::Row*>> tier;
   for (const auto& r : q.R) {
-    if (n && r.w != wstar) break;
     if (own && &S.sx(k5m_sg(S, q, r.y)) == own) continue;
-    if (!n) wstar = r.w;
+    if (!tier.empty() && r.w != tier[0].second->w) break;
+    const std::vector<uint64_t>& K = k5m_K(S, q, r.y);
+    uint64_t dmin = K5F + 1;
+    for (size_t i = 0; i < q.Q.size(); i++) if (q.d[i] < dmin && std::binary_search(K.begin(), K.end(), q.Q[i])) dmin = q.d[i];
+    tier.push_back({dmin, &r});
+  }
+  std::stable_sort(tier.begin(), tier.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+  for (size_t n = 0; n < tier.size() && n < 5; n++) {
     if (n) o += ",";
-    o += k5_row_json(S, q, r, false);
-    if (++n == 5) break;
+    std::string row = k5_row_json(S, q, *tier[n].second, false);
+    row.insert(row.size() - 1, ",\"dmin\":" + std::to_string(tier[n].first));
+    o += row;
   }
   const auto t2 = std::chrono::steady_clock::now();
   o += "],\"qus\":" + std::to_string((long long)std::chrono::duration<double, std::micro>(t1 - t0).count()) +

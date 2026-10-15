@@ -1,2 +1,2 @@
-1.3.1
-source k6r (K6: each prompt recalls from the one store of both apps, with the app and session of each memory)
+1.3.2
+source k6r (K6: each prompt recalls from the one store of both apps, the memory reached by the rarest cue first)
