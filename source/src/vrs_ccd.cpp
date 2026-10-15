@@ -671,17 +671,106 @@ class Daemon {
         if (k.sec > 1 || k.nu.empty()) throw std::runtime_error("START_EXPECT_SEARCH_KEY");
         return k;
     }
-    Json search(const Json& request, unsigned slot) {
-        vrs_h* h = ready_lib();
+    // Replay: the view items (the request side clipped at 1500 code points in order, the final answer at 2500), each line with ℓ
+    std::string replay_body(const std::string& f, const std::string& nu, const Json& vi, FileCache& rollouts, FileCache& originals, Json& vj) {
+        std::vector<ViewEntry> view;
+        for (const auto& v : vi.values) view_of(f, nu, v.values.at(0).uint(), v.values.at(1).uint(), rollouts, originals, view);
+        size_t req_left = 1500, fin_left = 2500;
+        std::string body;
+        for (auto& e : view) {
+            e.text = clip_points(e.text, e.role == "user" ? req_left : fin_left);
+            if (!body.empty()) body += "\n";
+            body += "항목 " + std::to_string(e.o) + "+" + std::to_string(e.n) + " k=" + std::to_string(e.k) + " · " + (e.role == "user" ? "사용자" : "답") +
+                    " · " + e.ts + " · sha " + e.h.substr(0, 16);
+            uint64_t ell = 0;
+            for (size_t a = 0; a <= e.text.size(); ++ell) {
+                const size_t z = e.text.find('\n', a);
+                body += "\n" + std::to_string(ell) + "│" + e.text.substr(a, z == std::string::npos ? std::string::npos : z - a);
+                if (z == std::string::npos) break;
+                a = z + 1;
+            }
+            Json x = Json::obj(); x.set("o", Json::num(e.o)).set("n", Json::num(e.n)).set("k", Json::num(e.k)).set("h", Json::str(e.h)).set("role", Json::str(e.role))
+                .set("timestamp", Json::str(e.ts)).set("text", Json::str(e.text));
+            vj.values.push_back(std::move(x));
+        }
+        return body;
+    }
+    // K6: a path as one key (slashes one way, case folded as Windows paths compare)
+    static std::string path_key(std::string s) {
+        for (auto& c : s) { if (c == '\\') c = '/'; else if (c >= 'A' && c <= 'Z') c = char(c - 'A' + 'a'); }
+        return s;
+    }
+    // K6 §5: the memories a prompt calls up, from the one store of both apps (VRS_K6_auto_recall_v1.md D-s1, D-s2)
+    Json recall(const Json& request, unsigned slot) {
         const std::string query = request.at("query").text();
-        if (query.empty()) throw std::runtime_error("QUERY_EMPTY");
-        const size_t budget = budget_of(request);
+        Json out = Json::obj(); out.set("ok", Json::flag(true));
+        if (query.empty()) { out.set("text", Json::str("")); return out; }
+        std::vector<std::string> W; std::string caller;
+        const Json res = k5_result(request, query, slot, W, &caller, true);
+        const auto& rows = res.at("rows").values;
+        const uint64_t Q = res.at("Q").uint(), rare = res.at("rare").uint();
+        FileCache rollouts, originals;
+        struct Pick { const Json* r; std::string path; uint64_t o0; };
+        std::vector<Pick> picks; std::string wstar;
+        for (const auto& r : rows) {
+            if (r.at("sec").uint() != 1) continue;  // R in ≺ order (the Replay rows of search repeat its head)
+            const std::string w = r.at("w").text();
+            if (!picks.empty() && w != wstar) break;  // D-a4: the tier of w* only
+            const std::string f = r.at("f").text(), nu = r.at("nu").text();
+            const uint64_t ro0 = r.at("o0").uint();
+            const auto org = origin_of(f, nu, ro0, line_length(opened(rollouts, f), ro0), rollouts);
+            if (!caller.empty() && path_key(org.first) == path_key(caller)) continue;  // the caller's own turns
+            if (picks.empty()) wstar = w;
+            picks.push_back({&r, org.first, org.second});
+            if (picks.size() == 5) break;
+        }
+        std::string text;
+        if (!picks.empty()) {
+            const size_t B = 10000;
+            text = "⟦vrs 회상 · 이 말이 떠올린 두 앱의 기억 " + std::to_string(picks.size()) + " · 단서 " + std::to_string(Q) + " (드묾 " + std::to_string(rare) +
+                   ") · 원문은 vrs_read, 더 찾으면 vrs_search⟧";
+            Json items = Json::arr();
+            for (size_t i = 0; i < picks.size(); ++i) {
+                const Pick& p = picks[i]; const Json& r = *p.r;
+                const bool app = app_file(r.at("f").text());
+                const std::string stem = vp_u8(vp_path(p.path).stem());
+                const std::string session = app && stem.size() >= 36 ? stem.substr(stem.size() - 36) : stem;
+                const std::string head = "\n\n[" + std::string(app ? "ChatGPT 앱 · 스레드 " : "Claude Code · 세션 ") + session + " · " + theta_text(r.at("the").uint()) +
+                    " · " + p.path + "#" + std::to_string(p.o0) + " · " + strength_text(r.at("w").text(), int64_t(std::stoll(r.at("sh").scalar)), res.at("cues")) +
+                    " · 맞음 " + std::to_string(r.at("m").uint()) + "/" + std::to_string(Q) + "]\n";
+                Json vj = Json::arr();
+                std::string body = replay_body(r.at("f").text(), r.at("nu").text(), r.at("vi"), rollouts, originals, vj);
+                const size_t room = utf16_units(text) + utf16_units(head);
+                if (room + utf16_units(body) > B) {
+                    if (i) break;  // whole memories only, after the first
+                    const std::string cut = "\n[잘림]";
+                    if (room + utf16_units(cut) >= B) break;
+                    size_t at = 0, u = 0; const size_t left = B - room - utf16_units(cut);
+                    while (at < body.size()) { const size_t pn = point_bytes(uint8_t(body[at])); const size_t pu = pn == 4 ? 2 : 1; if (u + pu > left) break; u += pu; at += pn; }
+                    body = body.substr(0, at) + cut;
+                }
+                text += head + body;
+                Json it = Json::obj(); it.set("app", Json::str(app ? "codex" : "claude")).set("session", Json::str(session)).set("path", Json::str(p.path))
+                    .set("o0", Json::num(p.o0)).set("w", r.at("w")).set("m", r.at("m")).set("view", std::move(vj));
+                items.values.push_back(std::move(it));
+            }
+            out.set("items", std::move(items));
+        }
+        out.set("text", Json::str(text)).set("utf16", Json::num(utf16_units(text)));
+        return out;
+    }
+    // D-q8′ and the lib7 query of a request: W(t) and the rows (shared by search and K6 recall); caller = the caller's original file
+    // recall: lib7 gives only ρ″ (vrs_recall, the caller's rollout left out), else the rows of D-r9 (vrs_search)
+    Json k5_result(const Json& request, const std::string& query, unsigned slot, std::vector<std::string>& W, std::string* caller, bool recall = false) {
+        vrs_h* h = ready_lib();
         // D-q8′: W(t) = the caller's file ∪ the live Claude writers' transcripts ∪ the live app writers' rollouts, each closed and in lib7
-        std::vector<std::string> W;
+        bool first = true; std::string lib_caller;
         auto claude = [&](const std::string& transcript) {
             Entry* e = nullptr;
+            const bool own = first; first = false;
             try { e = &identify(transcript); }
             catch (const std::runtime_error& x) { if (std::string_view(x.what()) == "PATH_NOT_FOUND") return; throw; }
+            if (own && caller) { *caller = e->transcript; lib_caller = e->rollout; }
             if (std::find(W.begin(), W.end(), e->rollout) != W.end()) return;
             const TailResult tail = conv_tail(e->transcript, e->rollout, cover(*e), slot, h, &e->handles);
             clean_marker(*e);
@@ -694,9 +783,12 @@ class Daemon {
             cx_core_settle(*cx_, r); W.push_back(r);
         };
         if (const auto* t = request.find("transcript")) claude(t->text());
+        first = false;
         if (const auto* t = request.find("thread")) {
             if (!cx_) throw std::runtime_error("CODEX_ROOT_ABSENT");
             const std::string r = cx_core_thread_file(*cx_, t->text());
+            if (caller) *caller = r;
+            lib_caller = r;
             if (std::find(W.begin(), W.end(), r) == W.end()) W.push_back(r);
         }
         auto writers = [&](const std::string& root, bool own) {
@@ -711,11 +803,20 @@ class Daemon {
         if (cx_) writers(cx_writers_, false);
         std::vector<const char*> wp; for (const auto& p : W) wp.push_back(p.c_str());
         char* raw = nullptr; size_t n = 0;
-        const int rc = vrs_search(h, query.data(), query.size(), wp.data(), unsigned(wp.size()), &raw, &n);
+        const int rc = recall ? vrs_recall(h, query.data(), query.size(), wp.data(), unsigned(wp.size()), lib_caller.c_str(), &raw, &n)
+                              : vrs_search(h, query.data(), query.size(), wp.data(), unsigned(wp.size()), &raw, &n);
         std::unique_ptr<char, decltype(&vrs_free)> bytes(raw, vrs_free);
         if (rc == 1) throw std::runtime_error("NOT_READY");
         if (rc) throw std::runtime_error("VRS_SEARCH_" + std::to_string(rc));
-        const Json res = parse(std::string_view(raw, n));
+        return parse(std::string_view(raw, n));
+    }
+    Json search(const Json& request, unsigned slot) {
+        ready_lib();
+        const std::string query = request.at("query").text();
+        if (query.empty()) throw std::runtime_error("QUERY_EMPTY");
+        const size_t budget = budget_of(request);
+        std::vector<std::string> W;
+        const Json res = k5_result(request, query, slot, W, nullptr);
         const auto& rows = res.at("rows").values;
         const uint64_t Q = res.at("Q").uint(), rare = res.at("rare").uint(), common = res.at("common").uint(), D = res.at("D").uint();
         // the start: the first row not before the key (no request state)
@@ -783,27 +884,8 @@ class Daemon {
                 out.units = 0; out.item = std::move(item);
                 return out;
             }
-            // Replay: the view items (the request side clipped at 1500 code points in order, the final answer at 2500), each line with ℓ
-            std::vector<ViewEntry> view;
-            for (const auto& v : r.at("vi").values) view_of(f, nu, v.values.at(0).uint(), v.values.at(1).uint(), rollouts, originals, view);
-            size_t req_left = 1500, fin_left = 2500;
-            std::string body; Json vj = Json::arr();
-            for (auto& e : view) {
-                e.text = clip_points(e.text, e.role == "user" ? req_left : fin_left);
-                if (!body.empty()) body += "\n";
-                body += "항목 " + std::to_string(e.o) + "+" + std::to_string(e.n) + " k=" + std::to_string(e.k) + " · " + (e.role == "user" ? "사용자" : "답") +
-                        " · " + e.ts + " · sha " + e.h.substr(0, 16);
-                uint64_t ell = 0;
-                for (size_t a = 0; a <= e.text.size(); ++ell) {
-                    const size_t z = e.text.find('\n', a);
-                    body += "\n" + std::to_string(ell) + "│" + e.text.substr(a, z == std::string::npos ? std::string::npos : z - a);
-                    if (z == std::string::npos) break;
-                    a = z + 1;
-                }
-                Json x = Json::obj(); x.set("o", Json::num(e.o)).set("n", Json::num(e.n)).set("k", Json::num(e.k)).set("h", Json::str(e.h)).set("role", Json::str(e.role))
-                    .set("timestamp", Json::str(e.ts)).set("text", Json::str(e.text));
-                vj.values.push_back(std::move(x));
-            }
+            Json vj = Json::arr();
+            std::string body = replay_body(f, nu, r.at("vi"), rollouts, originals, vj);
             const uint64_t pq = r.at("pq").uint(), pe = r.at("pe").uint();
             std::string re;
             if (r.at("re").uint() && !r.at("n").uint()) re = " · 재검증 (질의 관측이 사전 기권: 창·보기 줄·출처·규칙)";  // D-r5: no evidence to show
@@ -876,6 +958,7 @@ public:
                 Json out = Json::obj(); out.set("ok", Json::flag(true)).set("proto", Json::num(2)).set("roots", std::move(roots));
                 return out.dump() + '\n';
             }
+            if (op == "recall") return recall(j, slot).dump() + '\n';  // K6 §5: before the thread route (a recall may name a thread)
             if (op == "search") {  // K5 D-r9: either bridge (a transcript or a thread names the caller's file of W)
                 const auto began = std::chrono::steady_clock::now();
                 std::string reply = search(j, slot).dump() + '\n';

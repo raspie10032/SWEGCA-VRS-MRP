@@ -1,5 +1,5 @@
 {
-  "description": "vrs-lib: the post-compaction guidance.",
+  "description": "vrs-lib: the memories each prompt recalls from both apps, and the post-compaction guidance.",
   "hooks": {
     "SessionStart": [
       {
@@ -9,6 +9,17 @@
             "type": "command",
             "command": "echo vrs-lib: this thread was compacted. The exact pre-compaction originals can be fetched with the vrs_restore tool.",
             "commandWindows": "cmd /d /c echo vrs-lib: this thread was compacted. The exact pre-compaction originals can be fetched with the vrs_restore tool."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}\\bin\\vrs_ccd.exe\" --hook recall-app",
+            "additionalContextLimit": 0
           }
         ]
       }

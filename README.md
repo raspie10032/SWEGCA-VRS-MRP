@@ -1,4 +1,4 @@
-# vrs-lib 1.3.0 (SWEGCA VRS-MRP)
+# vrs-lib 1.3.1 (SWEGCA VRS-MRP)
 
 **English** | [한국어](README.ko.md)
 
@@ -10,6 +10,7 @@ vrs-lib is a Windows plugin for **Claude Code** and the **ChatGPT desktop app**.
 - One executable (`bin/vrs_ccd.exe`) is the daemon, the MCP server for both apps, and the hooks. **No Python and no installer needed.**
 - **One PC, one experience (new in 1.2.0):** both apps share one daemon and one store on your PC. Claude Code transcripts and ChatGPT app threads live side by side in the same store without clashing.
 - **Search across both apps (new in 1.3.0):** `vrs_search` finds the turns of every Claude Code session and every ChatGPT app thread on this PC that answer a question, wherever you ask from. The strongest remembered turns come back verbatim with their original positions.
+- **One experience, recalled by itself (new in 1.3.1):** every message you send is also a cue. Before the model answers, the memories it calls up from the one store of both apps (other Claude Code sessions and ChatGPT app threads) are added to that turn, verbatim, each with its app and session. No tool call is needed; the turns of the session you are in are left out.
 - `source/` holds the source that `bin/vrs_ccd.exe` was built from.
 
 ## Install
@@ -73,6 +74,11 @@ codex plugin add vrs-lib@vrs-lib
   - You can change these with the environment variables `VRS_HOME` (data folder) and `VRS_ENDPOINT` (pipe).
   - The daemon only reads your original transcripts (`~/.claude/projects`, `~/.codex/sessions`); it never writes to them.
 
+## Upgrading from 1.3.0
+
+- Stop the running daemon with `Get-Process vrs_ccd | Stop-Process` and open a new session (restart the ChatGPT app as well); the 1.3.1 daemon starts on the same data.
+- In the ChatGPT app, the new UserPromptSubmit hook has to be trusted once (the app asks, or review it under hooks).
+
 ## Upgrading from 1.2.0
 
 - A daemon that's already running keeps using the 1.2.0 executable, which has no search. Stop it with `Get-Process vrs_ccd | Stop-Process` and open a new session; the 1.3.0 daemon starts and builds its search index (the first start can take a minute on a large history).
@@ -113,6 +119,15 @@ codex plugin add vrs-lib@vrs-lib
 | Serial structure | 0 in the static check |
 | Requests before ready | `NOT_READY` comes back right away (at most 339 ms). |
 | Recovery after compaction (fork test KM6c′) | Both arms forked from the same compaction summary. Of 18 facts the summary lost, the arm without the tool got 0 in both pairs, and the arm with the tool got all 18 in both pairs (bar 17, no wrong answers, one tool call). |
+
+### 1.3.1 (recall on every message, on fixed copies of real Claude Code and app histories)
+
+| Check | Result |
+|---|---|
+| Exact originals and their source | 30 of 30 real questions: 118 recalled memories and 249 entries matched the originals in SHA and text, each with the right app and session. |
+| Size | At most 9,909 UTF-16 units per message (Claude Code takes up to 10,000). |
+| Speed | Recall adds 5.75 ms at the median (p95 7.58 ms). |
+| No regression | `vrs_search` (30/30), `vrs_restore` and `vrs_read` (34/34) answers equal 1.3.0; the K5 dump equals the independent calculator (14,270 lines). |
 
 ### 1.3.0 (search across both apps, on fixed copies of real Claude Code and app histories)
 

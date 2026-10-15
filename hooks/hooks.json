@@ -1,12 +1,54 @@
 {
-  "description": "vrs-lib: writer markers for open sessions, and the post-compaction guidance.",
+  "description": "vrs-lib: writer markers for open sessions, the memories each prompt recalls from both apps, and the post-compaction guidance.",
   "hooks": {
     "SessionStart": [
-      { "hooks": [ { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/vrs_ccd.exe", "args": ["--hook", "writer"] } ] },
-      { "matcher": "compact", "hooks": [ { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/vrs_ccd.exe", "args": ["--hook", "compact"] } ] }
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/vrs_ccd.exe",
+            "args": [
+              "--hook",
+              "writer"
+            ]
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/vrs_ccd.exe",
+            "args": [
+              "--hook",
+              "compact"
+            ]
+          }
+        ]
+      }
     ],
     "UserPromptSubmit": [
-      { "hooks": [ { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/vrs_ccd.exe", "args": ["--hook", "writer"] } ] }
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/vrs_ccd.exe",
+            "args": [
+              "--hook",
+              "writer"
+            ]
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/vrs_ccd.exe",
+            "args": [
+              "--hook",
+              "recall"
+            ]
+          }
+        ]
+      }
     ]
   }
 }

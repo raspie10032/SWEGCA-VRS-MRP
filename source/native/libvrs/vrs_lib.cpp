@@ -4486,6 +4486,22 @@ int vrs_search(vrs_h* h, const char* query, size_t qlen, const char* const* w, u
   *json = m; *len = out.size();
   return 0;
 }
+int vrs_recall(vrs_h* h, const char* query, size_t qlen, const char* const* w, unsigned nw, const char* caller, char** json, size_t* len) {
+  if (!h || !json || !len || (!query && qlen)) return -1;
+  *json = nullptr; *len = 0;
+  Store& S = *h->S;
+  const int rd = S.ready.load(std::memory_order_acquire);
+  if (rd < 0) return -2;
+  if (rd == 0 || !S.k5->ready.load(std::memory_order_acquire)) return 1;
+  std::vector<std::string> W;
+  for (unsigned i = 0; i < nw; i++) if (w && w[i] && *w[i]) W.push_back(w[i]);
+  const std::string out = k5_recall_json(S, std::string(query ? query : "", qlen), W, caller ? caller : "");
+  char* m = (char*)std::malloc(out.size() + 1);
+  if (!m) return -4;
+  std::memcpy(m, out.data(), out.size()); m[out.size()] = 0;
+  *json = m; *len = out.size();
+  return 0;
+}
 int vrs_k5_dump(vrs_h* h, const char* const* ids, const char* const* qs, unsigned nq, const char* file) {
   if (!h || !file || (nq && (!ids || !qs))) return -1;
   Store& S = *h->S;

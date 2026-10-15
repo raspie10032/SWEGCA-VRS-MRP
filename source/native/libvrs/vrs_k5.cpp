@@ -1367,6 +1367,30 @@ std::string k5_search_json(Store& S, const std::string& text, const std::vector<
   o += "],\"us\":" + std::to_string((long long)us) + "}";
   return o;
 }
+// K6 E-s1′ (VRS_K6_auto_recall_v1.md §6): ρ″ — R in ≺ order without the caller's file, the tier of the first w, at most 5 rows
+std::string k5_recall_json(Store& S, const std::string& text, const std::vector<std::string>& W, const std::string& caller) {
+  const auto t0 = std::chrono::steady_clock::now();
+  EbrGuard guard(S);
+  K5Q q; k5_query(S, text, W, q);
+  const auto t1 = std::chrono::steady_clock::now();
+  std::string o = "{\"ok\":true,\"Q\":" + std::to_string(q.Q.size()) + ",\"rare\":" + std::to_string(q.rare) + ",\"R\":" + std::to_string(q.R.size()) + ",\"cues\":[";
+  for (size_t i = 0; i < q.Q.size(); i++) { if (i) o += ","; o += "[" + loc_quote(q.qtext[i]) + "," + std::to_string(q.d[i]) + "]"; }
+  o += "],\"rows\":[";
+  const Sess* own = caller.empty() ? nullptr : get_sess(S, canon_path(S, caller.c_str()), false);
+  size_t n = 0; double wstar = 0;
+  for (const auto& r : q.R) {
+    if (n && r.w != wstar) break;
+    if (own && &S.sx(k5m_sg(S, q, r.y)) == own) continue;
+    if (!n) wstar = r.w;
+    if (n) o += ",";
+    o += k5_row_json(S, q, r, false);
+    if (++n == 5) break;
+  }
+  const auto t2 = std::chrono::steady_clock::now();
+  o += "],\"qus\":" + std::to_string((long long)std::chrono::duration<double, std::micro>(t1 - t0).count()) +
+       ",\"us\":" + std::to_string((long long)std::chrono::duration<double, std::micro>(t2 - t0).count()) + "}";
+  return o;
+}
 void k5_free_obj(void* p, uint8_t kind) { if (kind == 5) delete static_cast<K5U*>(p); else delete static_cast<K5C*>(p); }
 K5State* k5_new() { return new K5State; }
 void k5_free(Store& S) {

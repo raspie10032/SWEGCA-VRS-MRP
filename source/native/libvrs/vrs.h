@@ -50,6 +50,8 @@ void vrs_close(vrs_h*);
 /* K5 3판 (VRS_K5_query_v1.md §14): query recall over the synapse. w = the files of W (the caller's rollout and the live writers' rollouts).
    0 ok (json = the ordered rows of D-r9 with their rollout places), 1 not ready, <0 error. */
 int  vrs_search(vrs_h*, const char* query, size_t qlen, const char* const* w, unsigned nw, char** json, size_t* len);
+/* K6 (VRS_K6_auto_recall_v1.md §6 E-s1′): the rows of ρ″ — R without the rollout `caller`, the tier of the first strength, at most 5. Same returns. */
+int  vrs_recall(vrs_h*, const char* query, size_t qlen, const char* const* w, unsigned nw, const char* caller, char** json, size_t* len);
 int  vrs_k5_ready(vrs_h*);   /* 1 = the K5 layer has its base and every unit (latched), 0 = not yet */
 int  vrs_k5_dump(vrs_h*, const char* const* ids, const char* const* queries, unsigned nq, const char* file);  /* T3-1 dump (K5R_DUMP_SPEC.md) */
 int  vrs_k5_check_cells(vrs_h*);  /* T3-1s at rest: the number of K5 cells that differ from the sum of the units installed */

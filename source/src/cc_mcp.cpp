@@ -312,8 +312,56 @@ int writer_hook(const std::string& dir, const std::string& host) {
     fs::create_directories(vp_io_path(dir)); vw::publish(canonical(dir), w); return 0;
 }
 
+// K6 §5 (VRS_K6_auto_recall_v1.md E-1): each prompt reads the one store of both apps; the memories it calls up go into this turn.
+// One connection, no spawn, no wait: without a daemon there is nothing to recall yet. Never blocks the prompt (exit 0).
+int recall_hook(bool app) {
+#ifdef _WIN32
+    try {
+        const Json j = parse(read_all_stdin());
+        const std::string prompt = j.get("prompt");
+        if (prompt.empty()) return 0;
+        Json request = Json::obj(); request.set("op", Json::str("recall")).set("query", Json::str(prompt));
+        if (app) request.set("thread", Json::str(j.at("session_id").text()));
+        else request.set("transcript", Json::str(j.at("transcript_path").text()));
+        const PcDaemon d = pc_daemon("VRS_CC_DATA", "VRS_CC_ENDPOINT");
+        HANDLE h = CreateFileW(wide(d.endpoint).c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+        if (h == INVALID_HANDLE_VALUE) return 0;
+        struct Close { HANDLE h; ~Close() { CloseHandle(h); } } guard{h};
+        const std::string data = request.dump() + "\n";
+        for (size_t at = 0; at < data.size();) {
+            DWORD put = 0;
+            if (!WriteFile(h, data.data() + at, DWORD(data.size() - at), &put, nullptr) || !put) throw BridgeError("DAEMON_WRITE_FAILED");
+            at += put;
+        }
+        std::string got; char buf[65536]; size_t nl = std::string::npos;
+        while (nl == std::string::npos) {
+            DWORD n = 0;
+            if (!ReadFile(h, buf, sizeof buf, &n, nullptr) || !n) throw BridgeError("DAEMON_INCOMPLETE_REPLY");
+            got.append(buf, n); nl = got.find('\n');
+            if (got.size() > 8 * 1024 * 1024) throw BridgeError("DAEMON_REPLY_TOO_LARGE");
+        }
+        const Json reply = parse(std::string_view(got).substr(0, nl));
+        if (!reply.flag_at("ok")) throw BridgeError(reply.find("error") ? reply.at("error").text() : "DAEMON_ERROR");
+        const std::string text = reply.get("text");
+        if (text.empty()) return 0;
+        Json inner = Json::obj();
+        inner.set("hookEventName", Json::str("UserPromptSubmit")); inner.set("additionalContext", Json::str(text));
+        Json out = Json::obj(); out.set("hookSpecificOutput", std::move(inner));
+        const std::string s = out.dump() + "\n";
+        std::fwrite(s.data(), 1, s.size(), stdout); std::fflush(stdout);
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "vrs-lib recall: %s\n", cut(e.what(), 300).c_str());
+    }
+#else
+    (void)app;
+#endif
+    return 0;
+}
+
 int hook_main(const std::string& which) {
     if (which == "writer") return writer_hook(data_dir() + "/writer-markers", "claude");
+    if (which == "recall") return recall_hook(false);
+    if (which == "recall-app") return recall_hook(true);
     if (which == "compact") {
         Json inner = Json::obj();
         inner.set("hookEventName", Json::str("SessionStart")); inner.set("additionalContext", Json::str(GUIDE));
