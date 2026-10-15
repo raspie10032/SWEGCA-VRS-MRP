@@ -1,4 +1,4 @@
-# vrs-lib 1.2.0 (SWEGCA VRS-MRP)
+# vrs-lib 1.3.0 (SWEGCA VRS-MRP)
 
 [English](README.md) | **한국어**
 
@@ -8,6 +8,7 @@ Windows 용 플러그인이고, **Claude Code** 와 **ChatGPT 데스크톱 앱**
 
 - 엔진은 libvrs lib7(동결본)을 Windows 네이티브로 옮긴 것입니다.
 - 실행 파일 하나(`bin/vrs_ccd.exe`)가 데몬, 두 앱의 MCP 서버, 훅을 모두 맡습니다. **파이썬도 설치기도 필요 없습니다.**
+- **두 앱을 가로지르는 검색(1.3.0):** `vrs_search` 는 어디서 묻든 이 PC 의 모든 Claude Code 세션과 앱 스레드에서 질문에 답하는 턴을 찾습니다. 가장 강하게 기억된 턴은 원래 위치와 함께 원문 그대로 돌아옵니다.
 - **한 PC 한 경험(1.2.0):** 두 앱이 PC 하나에 데몬 하나와 저장소 하나를 같이 씁니다. Claude Code 기록과 앱 기록이 한 저장소에 겹치지 않게 들어갑니다.
 - `source/` 는 `bin/vrs_ccd.exe` 를 빌드한 소스입니다.
 
@@ -52,8 +53,9 @@ codex plugin add vrs-lib@vrs-lib
 |---|---|---|
 | `vrs_restore` | 없음 (`start`, `budget` 은 선택) | 이 세션(앱에서는 이 스레드)의 마지막 압축 전 원문 발화·답을 돌려줍니다. 여러 쪽이면 결과의 `next` 를 `start` 로 넘겨 이어 받습니다. |
 | `vrs_read` | `path`, `start`, `end` | 대화 기록 파일의 정확한 바이트 범위를 SHA-256 과 함께 읽습니다. 읽을 수 있는 곳은 Claude Code 기록 폴더, 앱의 `sessions` 폴더, 그리고 `VRS_CC_READ_ROOTS`·`VRS_CX_READ_ROOTS`(`;` 로 구분)에 준 폴더입니다. |
+| `vrs_search` | `query` (`start`, `budget` 은 선택) | 이 PC 의 모든 Claude Code 세션과 앱 스레드에서 찾습니다. 앞 행은 가장 강하게 기억된 턴을 원문 그대로 다시 보여 줍니다(순서: 질문 낱말과 그 기억의 시냅스 강도 → 맞은 낱말 수 → 최근). 나머지 행은 맞는 턴을 모두 위치로 알려 주고, `vrs_read` 로 읽을 수 있습니다. 드문 낱말(이름·식별자·숫자)은 오래된 턴까지 닿고, 64개 넘는 턴에 나오는 낱말은 최근 64개로 봅니다. 여러 쪽이면 `next` 를 `start` 로 넘깁니다. |
 
-- Claude Code 에서 도구 이름은 `mcp__plugin_vrs-lib_vrs-lib__vrs_restore` 와 `mcp__plugin_vrs-lib_vrs-lib__vrs_read` 입니다.
+- Claude Code 에서 도구 이름은 `mcp__plugin_vrs-lib_vrs-lib__vrs_restore`, `mcp__plugin_vrs-lib_vrs-lib__vrs_read`, `mcp__plugin_vrs-lib_vrs-lib__vrs_search` 입니다.
 - `NOT_READY` 는 색인을 준비하는 중이라는 뜻입니다. 원문이 없다는 뜻이 아닙니다. 몇 초 뒤 같은 인자로 다시 부르면 됩니다.
   - 설치 직후 처음 뜰 때는 기록 전체를 색인하느라 이 상태가 수십 초 이어질 수 있습니다. 그 뒤의 재시작은 몇 초입니다.
 
@@ -70,6 +72,10 @@ codex plugin add vrs-lib@vrs-lib
   - 데이터 폴더는 `%LOCALAPPDATA%\vrs-lib` 입니다. 어느 앱에도 속하지 않아서, 플러그인을 지워도 남습니다. 지우려면 데몬을 끝낸 뒤 직접 지웁니다.
   - 환경 변수 `VRS_HOME`(데이터 폴더)과 `VRS_ENDPOINT`(파이프)로 바꿀 수 있습니다.
   - 데몬은 원본 기록(`~/.claude/projects`, `~/.codex/sessions`)을 읽기만 합니다.
+
+## 1.2.0 에서 올릴 때
+
+- 떠 있는 데몬은 검색이 없는 1.2.0 실행 파일로 계속 돕니다. `Get-Process vrs_ccd | Stop-Process` 로 끝낸 뒤 새 세션을 엽니다. 그러면 1.3.0 데몬이 뜨고 검색 색인을 짓습니다(기록이 많으면 처음 한 번은 1분쯤 걸릴 수 있습니다).
 
 ## 1.1.x 에서 올릴 때
 
@@ -107,6 +113,17 @@ codex plugin add vrs-lib@vrs-lib
 | 직렬 구조 | 정적 검사 0 |
 | 준비 전 요청 | 곧바로 `NOT_READY` 를 돌려줍니다(최대 339 ms). |
 | 압축 뒤 복원(분기 시험 KM6c′) | 같은 압축 요약에서 갈랐습니다. 요약이 잃은 18개 사실 가운데 도구 없는 쪽은 두 쌍 모두 0개, 도구 있는 쪽은 두 쌍 모두 18개를 맞혔습니다(기준 17개, 오답 0, 도구 호출 1번). |
+
+### 1.3.0 (두 앱을 가로지르는 검색, 실제 Claude Code·앱 기록의 고정 사본)
+
+| 항목 | 결과 |
+|---|---|
+| 독립 계산기와 같은 값 | 데몬의 전량 덤프(턴·칸·시냅스·질의)가 따로 짠 계산기와 14,270줄 모두 같았습니다. 경쟁 주입 일꾼 1·12, 짓는 도중 강제 종료 10회 뒤에도 같았습니다. |
+| 물은 것을 찾음 | 실제 Claude Code 질문 20개 중 19개, 앱을 가로지르는 질문 10개 중 10개가 첫 쪽에 답을 냈습니다. |
+| 정확한 원문 | 다시 보여 준 557항목의 sha 와 글이 원본과 같았습니다. |
+| 실시간 | 방금 쓴 줄 100/100 을 찾았습니다(중앙값 10 ms). |
+| 재시작 | 재시작 뒤 첫 검색 3.5–4.1 s(16,212 턴). |
+| 회귀 없음 | `vrs_restore`·`vrs_read` 답이 1.2.0 과 바이트까지 같았습니다(34/34). |
 
 ### 1.2.0 (한 PC 한 경험, 실제 Claude Code 와 실제 ChatGPT 데스크톱 앱)
 

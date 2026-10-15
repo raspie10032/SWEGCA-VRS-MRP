@@ -1,4 +1,4 @@
-# vrs-lib 1.2.0 (SWEGCA VRS-MRP)
+# vrs-lib 1.3.0 (SWEGCA VRS-MRP)
 
 **English** | [한국어](README.ko.md)
 
@@ -9,6 +9,7 @@ vrs-lib is a Windows plugin for **Claude Code** and the **ChatGPT desktop app**.
 - The engine is libvrs lib7 (frozen build), ported natively to Windows.
 - One executable (`bin/vrs_ccd.exe`) is the daemon, the MCP server for both apps, and the hooks. **No Python and no installer needed.**
 - **One PC, one experience (new in 1.2.0):** both apps share one daemon and one store on your PC. Claude Code transcripts and ChatGPT app threads live side by side in the same store without clashing.
+- **Search across both apps (new in 1.3.0):** `vrs_search` finds the turns of every Claude Code session and every ChatGPT app thread on this PC that answer a question, wherever you ask from. The strongest remembered turns come back verbatim with their original positions.
 - `source/` holds the source that `bin/vrs_ccd.exe` was built from.
 
 ## Install
@@ -52,8 +53,9 @@ codex plugin add vrs-lib@vrs-lib
 |---|---|---|
 | `vrs_restore` | none (`start` and `budget` are optional) | Returns the exact messages and answers from before the last compaction of this session (in the app, this thread). If the result spans several pages, pass its `next` value as `start` to get the next one. |
 | `vrs_read` | `path`, `start`, `end` | Reads an exact byte range of a transcript file, together with its SHA-256. It can read under the Claude Code transcript folder, the app's `sessions` folder, and any folders you list in `VRS_CC_READ_ROOTS` or `VRS_CX_READ_ROOTS` (separated by `;`). |
+| `vrs_search` | `query` (`start` and `budget` are optional) | Searches every Claude Code session and app thread on this PC. The first rows replay the strongest remembered turns verbatim (the order is by the synapse strength of the query's words with each memory, then by how many words match, then by recency); the rest list every matching turn by position, readable with `vrs_read`. Rare words (names, identifiers, numbers) reach older turns; a word that appears in more than 64 turns is seen through its 64 most recent ones. Pass `next` as `start` for the next page. |
 
-- In Claude Code the tools are named `mcp__plugin_vrs-lib_vrs-lib__vrs_restore` and `mcp__plugin_vrs-lib_vrs-lib__vrs_read`.
+- In Claude Code the tools are named `mcp__plugin_vrs-lib_vrs-lib__vrs_restore`, `mcp__plugin_vrs-lib_vrs-lib__vrs_read` and `mcp__plugin_vrs-lib_vrs-lib__vrs_search`.
 - `NOT_READY` means the index is still being prepared. It does not mean the originals are gone. Just call again with the same arguments a few seconds later.
   - The very first start after installing indexes all of your history, so this can last a few dozen seconds. Restarts after that take a few seconds.
 
@@ -70,6 +72,10 @@ codex plugin add vrs-lib@vrs-lib
   - The data lives in `%LOCALAPPDATA%\vrs-lib`. It doesn't belong to either app, so it stays when you remove the plugin. To delete it, stop the daemon and remove the folder yourself.
   - You can change these with the environment variables `VRS_HOME` (data folder) and `VRS_ENDPOINT` (pipe).
   - The daemon only reads your original transcripts (`~/.claude/projects`, `~/.codex/sessions`); it never writes to them.
+
+## Upgrading from 1.2.0
+
+- A daemon that's already running keeps using the 1.2.0 executable, which has no search. Stop it with `Get-Process vrs_ccd | Stop-Process` and open a new session; the 1.3.0 daemon starts and builds its search index (the first start can take a minute on a large history).
 
 ## Upgrading from 1.1.x
 
@@ -107,6 +113,17 @@ codex plugin add vrs-lib@vrs-lib
 | Serial structure | 0 in the static check |
 | Requests before ready | `NOT_READY` comes back right away (at most 339 ms). |
 | Recovery after compaction (fork test KM6c′) | Both arms forked from the same compaction summary. Of 18 facts the summary lost, the arm without the tool got 0 in both pairs, and the arm with the tool got all 18 in both pairs (bar 17, no wrong answers, one tool call). |
+
+### 1.3.0 (search across both apps, on fixed copies of real Claude Code and app histories)
+
+| Check | Result |
+|---|---|
+| Same values as an independent calculator | The daemon's full dump (turns, cells, synapses, queries) equals a separately written calculator line for line (14,270 lines), with 1 and 12 workers under race injection and after 10 forced kills during the build. |
+| Finds what you asked for | 19 of 20 real Claude Code questions and 10 of 10 cross-app questions had their answer on the first page. |
+| Exact originals | 557 replayed entries matched the originals in SHA and text. |
+| Live updates | 100/100 just-written lines found (median 10 ms). |
+| Restart | First search 3.5–4.1 s after a restart (16,212 turns). |
+| No regression | `vrs_restore` and `vrs_read` answers are byte-identical to 1.2.0 (34/34). |
 
 ### 1.2.0 (one PC, one experience, with real Claude Code and the real ChatGPT desktop app)
 

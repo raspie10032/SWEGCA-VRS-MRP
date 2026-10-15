@@ -1,2 +1,2 @@
-1.2.0
-source onepc (one daemon per PC for Claude Code and the ChatGPT desktop app)
+1.3.0
+source k5r (K5 query recall across both apps over the lib7 synapse: vrs_search)

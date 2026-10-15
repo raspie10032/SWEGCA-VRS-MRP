@@ -1,7 +1,7 @@
 {
   "name": "vrs-lib",
-  "version": "1.2.0",
-  "description": "Restores the exact pre-compaction originals (user utterances and answers) after Claude Code or the ChatGPT desktop app compacts the context. One daemon and one store per PC for both apps. Windows, no Python or installer needed.",
+  "version": "1.3.0",
+  "description": "Restores the exact pre-compaction originals (user utterances and answers) after Claude Code or the ChatGPT desktop app compacts the context, and searches every session and thread of both apps on this PC (vrs_search). One daemon and one store per PC for both apps. Windows, no Python or installer needed.",
   "author": { "name": "raspie10032" },
   "repository": "https://github.com/raspie10032/SWEGCA-VRS-MRP",
   "license": "MIT AND MPL-2.0"

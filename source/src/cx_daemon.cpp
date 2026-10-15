@@ -418,6 +418,25 @@ public:
         lib_of_ = std::move(lib);
     }
     const std::string& sessions() const { return sessions_; }
+    // VRS_K5_query_v1.md D-q8′: a rollout of W is in lib7 up to its last complete line before vrs_search reads its open turn
+    void settle_file(const std::string& rollout) {
+        vrs_h* lib = ready_lib();
+        uint64_t end = 0; { File f(rollout); end = complete_end(f); }
+        if (int rc = vrs_refresh(lib, rollout.c_str())) throw std::runtime_error("LIB_REFRESH_FAILED_" + std::to_string(rc));
+        int rc = vrs_wait(lib, rollout.c_str(), opts_.timeout_ms);
+        if (rc) throw std::runtime_error("VRS_WAIT_" + std::to_string(rc));
+        if (!end) return;
+        rc = vrs_wait_off(lib, rollout.c_str(), end, opts_.timeout_ms);
+        if (rc == -2) {
+            char* raw = nullptr; size_t n = 0;
+            int discovered = vrs_assemble_loc(lib, rollout.c_str(), 258400, &raw, &n); vrs_free(raw);
+            if (discovered < 0 || discovered == 2) throw std::runtime_error("VRS_ASSEMBLE_" + std::to_string(discovered));
+            rc = vrs_wait_off(lib, rollout.c_str(), end, opts_.timeout_ms);
+        }
+        if (rc) throw std::runtime_error("VRS_WAIT_OFF_" + std::to_string(rc));
+    }
+    // the caller's rollout of D-q8′ (the thread of _meta.threadId), settled
+    std::string thread_file(const std::string& s) { ready_lib(); const std::string p = locate(s).path; settle_file(p); return p; }
     std::string respond(std::string_view bytes) {
         try {
             const Json j = parse(bytes); const std::string op = j.at("op").text();
@@ -502,6 +521,8 @@ std::shared_ptr<CxCore> cx_core(const std::string& codex_home, const std::string
 }
 std::string cx_core_respond(CxCore& core, std::string_view request) { return core.d.respond(request); }
 const std::string& cx_core_sessions(const CxCore& core) { return core.d.sessions(); }
+std::string cx_core_thread_file(CxCore& core, const std::string& thread) { return core.d.thread_file(thread); }
+void cx_core_settle(CxCore& core, const std::string& rollout) { core.d.settle_file(rollout); }
 #else
 int cx_daemon_main(const std::vector<std::string>&) { throw std::runtime_error("CODEX_MODE_WINDOWS_ONLY"); }
 class CxCore {};
@@ -510,5 +531,7 @@ std::shared_ptr<CxCore> cx_core(const std::string&, const std::string&, const st
 }
 std::string cx_core_respond(CxCore&, std::string_view) { throw std::runtime_error("CODEX_MODE_WINDOWS_ONLY"); }
 const std::string& cx_core_sessions(const CxCore&) { throw std::runtime_error("CODEX_MODE_WINDOWS_ONLY"); }
+std::string cx_core_thread_file(CxCore&, const std::string&) { throw std::runtime_error("CODEX_MODE_WINDOWS_ONLY"); }
+void cx_core_settle(CxCore&, const std::string&) { throw std::runtime_error("CODEX_MODE_WINDOWS_ONLY"); }
 #endif
 }

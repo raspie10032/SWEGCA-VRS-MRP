@@ -47,6 +47,20 @@ int  vrs_wait_off(vrs_h*, const char* path, uint64_t off, uint64_t timeout_ms); 
 void vrs_free(char*);
 void vrs_close(vrs_h*);
 
+/* K5 3판 (VRS_K5_query_v1.md §14): query recall over the synapse. w = the files of W (the caller's rollout and the live writers' rollouts).
+   0 ok (json = the ordered rows of D-r9 with their rollout places), 1 not ready, <0 error. */
+int  vrs_search(vrs_h*, const char* query, size_t qlen, const char* const* w, unsigned nw, char** json, size_t* len);
+int  vrs_k5_ready(vrs_h*);   /* 1 = the K5 layer has its base and every unit (latched), 0 = not yet */
+int  vrs_k5_dump(vrs_h*, const char* const* ids, const char* const* queries, unsigned nq, const char* file);  /* T3-1 dump (K5R_DUMP_SPEC.md) */
+int  vrs_k5_check_cells(vrs_h*);  /* T3-1s at rest: the number of K5 cells that differ from the sum of the units installed */
+typedef struct {
+  int64_t ready, base, pend, ready_us;
+  uint64_t units_built, units_restored, units_checked, revisits, rev_tasks, shadow_n, shadow_bad;
+  uint64_t list_entries, node_bytes, unit_bytes, base_bytes, base_entries, size, claimed, retries;
+  uint64_t syn_bytes, syn_miss, ex_total, ex_bad;  /* 4판: synapse slots; T3-9′ (i) the exposures and the closed turns over 64·|Q(x)| */
+} vrs_k5dbg;
+void vrs_k5_stats(vrs_h*, vrs_k5dbg*);
+
 /* test hooks (not part of P-5) */
 int vrs_dbg_overflow(vrs_h*); /* invoke the same recovery as an OS overflow */
 typedef struct {

@@ -168,6 +168,13 @@ Json invoke(Client& client, const Json& params) {
             for (const auto& k : keys) if (k != "path" && k != "start" && k != "end" && k != "budget") throw BridgeError("READ_ARGUMENTS_INVALID");
             if (!keys.count("path") || !keys.count("start") || !keys.count("end")) throw BridgeError("READ_ARGUMENTS_INVALID");
             request.set("op", Json::str("read"));
+        } else if (tool == "vrs_search") {
+            for (const auto& k : keys) if (k != "query" && k != "budget" && k != "start") throw BridgeError("SEARCH_ARGUMENTS_INVALID");
+            if (!keys.count("query")) throw BridgeError("SEARCH_ARGUMENTS_INVALID");
+            const Json* meta = params.find("_meta");
+            const Json* thread = meta && meta->kind == Json::object ? meta->find("threadId") : nullptr;
+            if (!thread || thread->kind != Json::string || thread->scalar.empty()) throw BridgeError("THREAD_UNKNOWN");
+            request.set("op", Json::str("search")); request.set("thread", *thread);
         } else throw BridgeError("UNKNOWN_TOOL");
         return text_result(client.call(request).at("text").text(), false);
     } catch (const std::exception& e) {

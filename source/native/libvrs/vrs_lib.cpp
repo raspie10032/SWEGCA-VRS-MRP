@@ -30,10 +30,12 @@
 #include <unordered_set>
 #include <vector>
 #include <climits>
+#include <charconv>
 #include "vrs_plat.h"  // platform layer (VRS_MCP_libvrs_v1.md 13.2): the POSIX headers and calls of the Linux build, Win32 on Windows
 #include "vrs_tail_buffer.h"  // N-D: thread-owned allocation storage, unchanged input bytes
 #include "vrs_handle_cache.h"
 #include "swegca_architecture/evidence_rules.hpp"
+#include "swegca_architecture/sha256.hpp"
 
 namespace fs = std::filesystem;
 namespace sa = swegca::architecture;
@@ -418,6 +420,7 @@ std::string_view find_field(const std::string& line, const char* key, size_t lim
 
 // observer v11 constants and the shared plain data (verbatim; libvrs: ObsY gets the flag `bad`, lemma E no longer ends the process)
 struct A0Val; struct Contrib; struct DepChunk;
+struct K5U; struct K5C; struct K5UCand; struct K5CCand;  // K5 3판 (vrs_k5.cpp): values of their own, lib7 values are only read
 // libvrs 5 (VRS_코덱스일체화_v1.md §7, D9 / P-9): everything that depends on 𝔅 carries the fingerprint of the window it was made from, phi(y) = (wn, sum of the
 // identity hashes of the turns at the 𝔅 positions [k - wn, k)); the prefix fingerprint F(c) of the 4th stage is gone.
 // observer v11 constants (obs1/proof_v11.md; turnvrsd)
@@ -452,6 +455,13 @@ struct TurnRec {
   std::atomic<ObsY*> obs{nullptr};
   std::atomic<DepChunk*> deps{nullptr};   // reverse list: the turns whose unit holds this turn among its Y (P-10)
   std::atomic<uint8_t> regd{0};           // the turn has put itself in the lists of its Y
+  // K5 3판 (VRS_K5_query_v1.md §14, vrs_k5.cpp): k5b = in 𝔅; k5in = 0 not a K5 memory yet, 1 in the base, 2 claimed by the overlay, 3 in the overlay
+  std::vector<uint64_t> k5set;            // K(V(y)) sorted (written before the turn is claimed)
+  std::atomic<uint8_t> k5b{0}, k5in{0};
+  std::atomic<K5U*> k5u{nullptr}; std::atomic<K5C*> k5c{nullptr};
+  std::atomic<K5UCand*> k5ucand{nullptr}; std::atomic<K5CCand*> k5ccand{nullptr};  // restored units
+  std::atomic<DepChunk*> k5rev{nullptr};  // rev(y): the turns whose U held this turn
+  std::atomic<uint64_t> k5wphi{0}, k5wchk{0};  // the window fingerprint while 𝔅 has not moved
 };
 struct A0Val { std::vector<uint32_t> v, Yb; uint64_t phi = 0; std::atomic<uint64_t> vstamp{0}; };  // A0(x), the turns of BC(x) it was made over, and the sum of their window fingerprints
 struct CEnt { uint16_t cell; uint8_t fl; uint8_t pad; uint32_t cnt; };  // n identical cell adds: (cell, alpha | beta << 1)
@@ -1092,7 +1102,7 @@ struct TTab {  // the turn table with the 42f syntax TT[x]->field
 // N-B: unordered work obligations; implementation and publication proof: vrs_workset.h.
 // restore file i / the first look at a session after the load (lineage, restored contributions, counting) / count the closed turns of a session /
 // read the new bytes of a file / the lineage of a session can be tried again / check a batch of (turn, observer) pairs after a turn came into the order (P-10)
-enum : uint32_t { T_RESTORE = 0, T_FIRST = 1, T_COUNT = 2, T_INGEST = 3, T_KICK = 4, T_REVISIT = 5 };
+enum : uint32_t { T_RESTORE = 0, T_FIRST = 1, T_COUNT = 2, T_INGEST = 3, T_KICK = 4, T_REVISIT = 5, T_K5 = 6 };  // T_K5: a task of the K5 layer
 inline uint64_t task_of(uint32_t kind, uint64_t id) { return (uint64_t(kind) << 56) | id; }
 
 constexpr int HP_N = 512;
@@ -1174,7 +1184,8 @@ struct BOrder {
     while (BRet* r = ret.load(std::memory_order_relaxed)) { ret.store(r->next, std::memory_order_relaxed); std::free(r->b); delete r; }
   }
 };
-struct RetNode { void* p; uint8_t kind; size_t bytes; RetNode* next; };  // kind 0 ObsY, 1 A0Val, 2 Contrib, 3 InstrState, 4 TD
+struct RetNode { void* p; uint8_t kind; size_t bytes; RetNode* next; };  // kind 0 ObsY, 1 A0Val, 2 Contrib, 3 InstrState, 4 TD, 5 K5U, 6 K5C
+void k5_free_obj(void* p, uint8_t kind);
 // Replaced caches and contributions (P-8) are freed by epochs, with no lock: a thread that may hold one of them is inside an EbrGuard (registered under the epoch it
 // found); an object retired in epoch e can be held only by threads registered in an epoch <= e; when the threads of epoch e-1 are gone the epoch moves on and the
 // objects retired in e-1 are freed. Nobody waits: a collection that finds a thread in the old epoch leaves the objects for the next attempt.
@@ -1184,6 +1195,7 @@ struct Ebr {
   std::atomic<RetNode*> lst[3]{};
 };
 void free_ret(RetNode* r) {
+  if (r->kind >= 5) { k5_free_obj(r->p, r->kind); delete r; return; }
 #ifdef VRS_EBR_POISON  // test build: a freed object is overwritten with 0xDD and not given back; a reader that still holds it reads garbage (and crashes or disagrees)
   std::memset(r->p, 0xDD, r->kind == 0 ? sizeof(ObsY) : r->kind == 1 ? sizeof(A0Val) : r->kind == 2 ? sizeof(Contrib) : r->kind == 3 ? sizeof(InstrState) : sizeof(TD));
 #else
@@ -1198,7 +1210,10 @@ struct Root {  // VRS_onePC_v1.md B2: fixed at open
   void (*recover)(void*) = nullptr;
   void* recover_context = nullptr;
 };
+struct K5State;
+void k5_free(Store& S);
 struct Store {
+  K5State* k5 = nullptr;      // K5 3판 (vrs_k5.cpp)
   // ---- options (vrs_opts)
   std::string sdir, idir;     // sdir = roots[0].dir (the Linux watcher, which takes one root)
   std::vector<Root> roots;
@@ -1262,6 +1277,7 @@ struct Store {
 
   Sess& sx(uint32_t sg) const { return *sp[sg].load(std::memory_order_acquire); }
   ~Store() {
+    k5_free(*this);
     for (uint32_t i = 1, e = nturn.load(); i <= e; i++) {
       TurnRec& t = *TT[i]; delete t.obs.load(); delete t.a0.load(); delete t.ctr.load();
       for (Contrib* c = t.cand; c;) { Contrib* nx = c->next; delete c; c = nx; }
@@ -2478,7 +2494,7 @@ std::string payload_of(const std::string& line) {  // the "payload" object, verb
 // Every record carries its own key (byte offsets inside the rollout file), so the reader keeps one record per key and the same record
 // appended twice (by this process and by another) changes nothing (T-int-4). A torn or damaged record fails its check and is skipped.
 constexpr uint32_t VX_MAGIC = 0x36305856u;  // "VX06" (6th stage: D12 seeds); before: "VX05", little endian (5th stage: `rho` of the records is the ordinal, a unit is keyed by the fingerprint of the set it was counted over)
-enum : uint8_t { R_ITEM = 1, R_META = 2, R_TS = 3, R_TURN = 4, R_CONTRIB = 5, R_WM = 6, R_CONTRIB2 = 7 };  // R_CONTRIB (5) has no fingerprint: read and not used (P-8)  // R_WM: every line before this offset is on disk (P-3')
+enum : uint8_t { R_ITEM = 1, R_META = 2, R_TS = 3, R_TURN = 4, R_CONTRIB = 5, R_WM = 6, R_CONTRIB2 = 7, R_K5U = 8, R_K5C = 9, R_K5C2 = 10 };  // R_K5U / R_K5C: the K5 units (B-r7); R_K5C2: the 4판 K5C (§17 B-s4; R_K5C is read and not used)  // R_CONTRIB (5) has no fingerprint: read and not used (P-8)  // R_WM: every line before this offset is on disk (P-3')
 
 uint32_t chk32(const void* p, size_t n) { const uint64_t h = fnv((const char*)p, n); return uint32_t(h ^ (h >> 32)); }
 void put_u(std::string& b, uint64_t v, int n) { for (int i = 0; i < n; i++) b.push_back(char((v >> (8 * i)) & 0xff)); }
@@ -2520,6 +2536,7 @@ struct Shard {
   std::vector<ItemP> items; std::vector<TsP> tss; std::vector<MetaP> metas; std::vector<TurnP> turns; std::unordered_map<uint64_t, std::vector<ContribP>> contribs; uint64_t legacy_contribs = 0;
   bool present = false, current = true; uint64_t corrupt = 0;
   bool has_wm = false; uint64_t wm = 0;  // the largest R_WM; without one the shard is from a library that only recorded lines it had read from the file
+  std::unordered_map<uint64_t, std::vector<std::pair<uint8_t, std::string>>> k5rec;  // K5 units by o0 (raw payloads)
 };
 
 void emit_item(std::string& out, const Item& m, uint64_t ts, uint32_t r, uint32_t rho, uint32_t pfx) {
@@ -2599,6 +2616,11 @@ void decode_record(uint8_t type, const uint8_t* p, size_t n, Shard& sh) {
       x.e.reserve(ne);
       for (uint64_t i = 0; i < ne; i++) { const uint32_t cell = (uint32_t)r.u16(), fl = (uint32_t)r.u8(); r.u8(); const uint32_t c = (uint32_t)r.u32(); if (cell < (uint32_t)NCA) x.e.push_back(CEnt{(uint16_t)cell, (uint8_t)fl, 0, c}); }
       if (r.ok) { auto& v = sh.contribs[x.o0]; v.push_back(std::move(x)); } else sh.corrupt++;
+      break;
+    }
+    case R_K5U: case R_K5C: case R_K5C2: {
+      const uint64_t o0 = r.u64();
+      if (r.ok) sh.k5rec[o0].push_back({type, std::string((const char*)p, n)}); else sh.corrupt++;
       break;
     }
     default: sh.corrupt++;
@@ -2821,6 +2843,12 @@ std::vector<uint32_t> agg_ocalls_set(const TurnAgg& g) {  // the set form: calls
 
 void drive_counts(Store& S, Sess& ss);
 void on_turn_in(Store& S, uint32_t z);
+void k5_turn_in(Store& S, uint32_t z);    // vrs_k5.cpp
+void k5_start(Store& S);
+void k5_maybe_ready(Store& S);
+void k5_run_task(Store& S, uint64_t p);
+void k5_attach(TurnRec& t, const std::vector<std::pair<uint8_t, std::string>>& recs);
+struct K5State* k5_new();
 bool ensure_segs(Store& S, Sess& ss, bool force);
 void wake_waiters(Store& S, Sess& ss);
 void maybe_ready(Store& S);
@@ -2898,6 +2926,7 @@ void finalize_turn(Store& S, Sess& ss, uint32_t m, uint64_t e) {
   }
   ss.tl.set(m - 1, id);
   on_turn_in(S, id);  // P-10
+  if (!ss.memmode) k5_turn_in(S, id);  // K5 B-r6
   if (ensure_segs(S, ss, false)) drive_counts(S, ss);  // (ensure_segs counts by itself when it sets the lineage up)
 }
 
@@ -3503,6 +3532,7 @@ void maybe_ready(Store& S) {
 #endif
     int z = 0;
     if (S.ready.compare_exchange_strong(z, 1, std::memory_order_seq_cst)) bump_progress(S);
+    k5_maybe_ready(S);
   }
 }
 // ---------------- restore (P-2) ----------------
@@ -3691,6 +3721,8 @@ void materialize(Store& S, Sess& ss, Shard& sh) {
     ss.tl.set(rt, id);
     for (uint64_t h : t->D) S.pt_add(ss.sg, h, t->tpos);
     S.B.insert(id, t->the);  // D3': in the order as it is restored
+    if (const auto kr = sh.k5rec.find(tp.o0); kr != sh.k5rec.end()) k5_attach(*t, kr->second);  // K5 B-r7: restored units are candidates
+    k5_turn_in(S, id);
     // the units in the shard are candidates: whether one of them is the unit of this turn is told by its fingerprint, in the first look after the load, when every turn
     // of every file is in 𝔅 (settle_one). Without a candidate the turn is counted.
     const auto c = sh.contribs.find(tp.o0);
@@ -3816,6 +3848,7 @@ void run_task(Store& S, uint64_t v) {
     case T_REVISIT: run_revisit(S, reinterpret_cast<RevBatch*>(uintptr_t(id))); return;
     case T_INGEST: { Sess* s = S.sp[id].load(std::memory_order_acquire); if (s) { s->ing_q.store(0, std::memory_order_seq_cst); if (s->restored.load(std::memory_order_acquire)) ingest_file_tail(S, *s, false); } return; }
     case T_KICK: { Sess* s = S.sp[id].load(std::memory_order_acquire); if (s) ensure_segs(S, *s, false); return; }
+    case T_K5: k5_run_task(S, id); return;
   }
 }
 
@@ -3951,6 +3984,7 @@ bool next_work(Store& S, uint64_t& v, uint32_t& hint) {
   if (S.work.pop(v, hint)) return true;
   if (S.restore_left.load(std::memory_order_seq_cst) == 0) {
     S.loaded.store(1, std::memory_order_seq_cst);
+    k5_start(S);  // K5 B-r7: the base is built once every shard is in
     if (S.first.pop(v, hint)) return true;
     maybe_ready(S);
   }
@@ -4178,6 +4212,9 @@ int assemble_loc_impl(Store& S, const char* path, uint64_t B, char** json, size_
   return rc;
 }
 
+#include "vrs_k5.cpp"
+void k5_run_task(Store& S, uint64_t p) { k5_run(S, reinterpret_cast<K5Task*>(uintptr_t(p))); }
+
 }  // namespace
 
 // ================= the C API (P-5) =================
@@ -4190,6 +4227,10 @@ int vrs_open(const vrs_opts* o, vrs_h** out) {
   *out = nullptr;
   std::unique_ptr<Store> sp(new Store);
   Store& S = *sp;
+  S.k5 = k5_new();
+#ifdef VRS_K5_RACE
+  if (const char* rs = std::getenv("VRS_K5_RACE_SEED")) S.k5->race_seed = std::strtoull(rs, nullptr, 10);  // T3-1c only
+#endif
   // B1: nroots == 0 is the one root of before, with tag ""
   const vrs_root legacy{"", o->sessions_dir, o->change_markers, o->writer_markers, o->recover, o->recover_context};
   const vrs_root* given = o->nroots ? o->roots : &legacy;
@@ -4426,6 +4467,111 @@ int vrs_assemble_loc(vrs_h* h, const char* path, uint64_t budget, char** json, s
   return assemble_loc_impl(*h->S, path, budget, json, len);
 }
 void vrs_free(char* p) { std::free(p); }
+
+// ---- K5 3판 (VRS_K5_query_v1.md §14 B-r1 / B-r5)
+int vrs_k5_ready(vrs_h* h) { return h && h->S->k5 ? h->S->k5->ready.load(std::memory_order_acquire) : -1; }
+int vrs_search(vrs_h* h, const char* query, size_t qlen, const char* const* w, unsigned nw, char** json, size_t* len) {
+  if (!h || !json || !len || (!query && qlen)) return -1;
+  *json = nullptr; *len = 0;
+  Store& S = *h->S;
+  const int rd = S.ready.load(std::memory_order_acquire);
+  if (rd < 0) return -2;
+  if (rd == 0 || !S.k5->ready.load(std::memory_order_acquire)) return 1;  // B-r5 1: not ready is an error, never a fallback
+  std::vector<std::string> W;
+  for (unsigned i = 0; i < nw; i++) if (w && w[i] && *w[i]) W.push_back(w[i]);
+  const std::string out = k5_search_json(S, std::string(query ? query : "", qlen), W);
+  char* m = (char*)std::malloc(out.size() + 1);
+  if (!m) return -4;
+  std::memcpy(m, out.data(), out.size()); m[out.size()] = 0;
+  *json = m; *len = out.size();
+  return 0;
+}
+int vrs_k5_dump(vrs_h* h, const char* const* ids, const char* const* qs, unsigned nq, const char* file) {
+  if (!h || !file || (nq && (!ids || !qs))) return -1;
+  Store& S = *h->S;
+  if (S.ready.load() != 1 || !S.k5->ready.load()) return 1;
+  std::vector<std::pair<std::string, std::string>> q;
+  for (unsigned i = 0; i < nq; i++) q.push_back({ids[i], qs[i]});
+  return k5_dump(S, q, file);
+}
+void vrs_k5_stats(vrs_h* h, vrs_k5dbg* d) {
+  if (!h || !d) return;
+  std::memset(d, 0, sizeof *d);
+  const K5State& k = *h->S->k5;
+  d->ready = k.ready.load(); d->base = k.base_pub.load(); d->pend = k.pend.load(); d->ready_us = k.ready_us.load();
+  d->units_built = k.units_built.load(); d->units_restored = k.units_restored.load(); d->units_checked = k.units_checked.load();
+  d->revisits = k.revisits.load(); d->rev_tasks = k.rev_tasks.load(); d->shadow_n = k.shadow_n.load(); d->shadow_bad = k.shadow_bad.load();
+  d->list_entries = k.list_entries.load(); d->node_bytes = k.node_bytes.load(); d->unit_bytes = k.unit_bytes.load();
+  const K5Base* b = k.base.load(); d->base_bytes = b ? b->bytes : 0;
+  uint64_t be = 0; if (b) for (int i = 0; i < 64; i++) be += b->kp[i].id.size() + b->qp[i].id.size();
+  d->base_entries = be;
+  d->syn_bytes = k.syn_bytes.load(); d->syn_miss = k.syn_miss.load();
+  d->size = be * 4 + d->node_bytes + d->unit_bytes + d->syn_bytes;  // T3-9: list elements x 4 + skip-list nodes + units + synapse slots
+  d->claimed = k.claimed.size(); d->retries = h->S->count_retries.load();
+  EbrGuard guard(*h->S);
+  for (uint32_t i = 1, e = h->S->nturn.load(); i <= e; i++) {  // T3-9′ (i): the exposures of each closed turn, Σ_e |hs_e| <= 64·|Q(x)|
+    TurnRec* t = tt_find(*h->S, i);
+    if (!t) continue;
+    const K5C* c = t->k5c.load();
+    if (!c) continue;
+    d->ex_total += c->hs.size();
+    if (c->hs.size() > uint64_t(K5F) * t->Q.size()) d->ex_bad++;
+  }
+}
+// T3-1s at rest: every cell is the sum of the units installed now; 4판: every synapse is the sum of the shares of the direct items installed now
+int vrs_k5_check_cells(vrs_h* h) {
+  if (!h) return -1;
+  Store& S = *h->S;
+  EbrGuard guard(S);
+  int64_t an[K5NC] = {}, ab[K5NC] = {};
+  std::map<std::pair<int, uint32_t>, int64_t> rc;
+  struct SV { int64_t an = 0, ab = 0; std::map<uint32_t, int64_t> rc; };
+  std::map<std::pair<uint64_t, uint32_t>, SV> sv;
+  for (uint32_t i = 1, e = S.nturn.load(); i <= e; i++) {
+    TurnRec* t = tt_find(S, i);
+    if (!t) continue;
+    const K5C* c = t->k5c.load();
+    if (!c) continue;
+    for (const K5CE& x : c->e) {
+      const bool a = x.fl & 1, b = (x.fl & 2) != 0;
+      const int64_t dan = a ? ((int64_t(1) << 32) + 1) : 1, dab = a != b ? (a ? (int64_t(1) << 32) : 1) : 0;
+      an[x.c] += dan; ab[x.c] += dab;
+      rc[{x.c, c->root}]++;
+      for (uint32_t k = 0; k < x.nh; k++) { SV& v = sv[{t->Q[c->hs[x.h0 + k]], x.y}]; v.an += dan; v.ab += dab; v.rc[c->root]++; }
+    }
+    for (const K5CI& x : c->ci) {
+      an[x.k] += (int64_t(x.a) << 32) + int64_t(x.n); ab[x.k] += (int64_t(x.a2) << 32) + int64_t(x.b2);
+      rc[{x.k, c->root}] += x.n;
+    }
+  }
+  int bad = 0;
+  for (int k = 0; k < K5NC; k++) {
+    uint32_t roots = 0; for (const auto& [key, v] : rc) if (key.first == k && v > 0) roots++;
+    if ((uint64_t)an[k] != S.k5->cells[k].an.load() || (uint64_t)ab[k] != S.k5->cells[k].ab.load() || roots != S.k5->cells[k].lin1.load()) bad++;
+  }
+  uint64_t held = 0;  // the slots with n > 0 must be exactly the synapses summed above
+  for (const auto& [key, v] : sv) {
+    const K5Syn* cl = k5_syn(S, key.first, key.second, false);
+    uint32_t roots = 0; for (const auto& [r, n] : v.rc) if (n > 0) roots++;
+    if (!cl || cl->an.load() != (uint64_t)v.an || cl->ab.load() != (uint64_t)v.ab || cl->lin.load() != roots) bad++;
+  }
+  if (const K5Base* B = S.k5->base.load())
+    for (int pi = 0; pi < 64; pi++) for (uint32_t j = 0; j < B->kp[pi].id.size(); j++) if (B->kp[pi].syn[j].an.load() & 0xffffffffu) held++;
+  for (size_t d = 0; d < LFMap<K5Head>::ND; d++) {
+    auto* ch = S.k5->ok.dir[d].load();
+    if (!ch) continue;
+    for (size_t i = 0; i < LFMap<K5Head>::CHN; i++)
+      for (auto* n = ch[i].load(); n; n = n->next.load()) {
+        const K5Node* s = n->val.sent.load();
+        for (const K5Node* x = s ? s->nx[0].load() : nullptr; x; x = x->nx[0].load())
+          if (const K5Syn* cl = x->syn.load()) if (cl->an.load() & 0xffffffffu) held++;
+      }
+  }
+  uint64_t want = 0; for (const auto& [key, v] : sv) if (v.an & 0xffffffff) want++;
+  if (held != want) bad++;
+  if (S.k5->syn_miss.load()) bad++;
+  return bad;
+}
 
 void vrs_close(vrs_h* h) {
   if (!h) return;

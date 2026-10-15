@@ -24,6 +24,9 @@ std::shared_ptr<CxCore> cx_core(const std::string& codex_home, const std::string
                                 uint64_t timeout_ms, std::function<vrs_h*()> lib);
 std::string cx_core_respond(CxCore& core, std::string_view request);
 const std::string& cx_core_sessions(const CxCore& core);  // the canonical $CODEX_HOME/sessions
+// VRS_K5_query_v1.md D-q8′: the rollout of a thread / any app rollout of W, in lib7 up to its last complete line
+std::string cx_core_thread_file(CxCore& core, const std::string& thread);
+void cx_core_settle(CxCore& core, const std::string& rollout);
 
 // VRS_onePC_v1.md B7: the one daemon of this PC as either bridge starts it. legacy_* name the environment variables of the separate
 // modes (tests); without them the home is VRS_HOME, else %LOCALAPPDATA%/vrs-lib, and the pipe VRS_ENDPOINT, else vrs-lib-<user>.

@@ -8,7 +8,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-DRIVERS = {'vrs_cli.cpp', 'vrs_t_insert5.cpp', 'vrs_t_insert7.cpp',
+DRIVERS = {'vrs_cli.cpp', 'vrs_t_insert5.cpp', 'vrs_t_insert7.cpp', 'vrs_k5.cpp',
            'vrs_t_conc.cpp', 'vrs_t_shut.cpp', 't6drv.cpp'}
 
 
@@ -68,7 +68,7 @@ def main():
     tail += ['-lsynchronization', '-ladvapi32', '-lbcrypt', '-lpsapi', '-static'] if win else ['-ldl', '-lrt']
     drivers = {'vrs_cli': lib / 'vrs_cli.cpp', 'vrs_t_insert7': lib / 'vrs_t_insert7.cpp',
                'vrs_t_conc': lib / 'vrs_t_conc.cpp', 'reopen': ROOT / 'tools/reopen.cpp',
-               'w5': ROOT / 'tools/w5.cpp', 'v603': ROOT / 'tools/v603/v603_portable.cpp'}
+               'w5': ROOT / 'tools/w5.cpp', 'v603': ROOT / 'tools/v603/v603_portable.cpp', 'k5drv': ROOT / 'tools/k5drv.cpp'}
     exes = []
     suffix = '.exe' if win else ''
     for name, source in drivers.items():

@@ -558,6 +558,310 @@ class Daemon {
         if (!permitted) throw std::runtime_error("READ_OUTSIDE_ROOT");
         (void)budget; return read_page(path, request);
     }
+    // ---------------- K5 3판 vrs_search (VRS_K5_query_v1.md D-r9, D-q8′, B-r1; §15.1) ----------------
+    // lib7 has processed a Claude rollout up to byte end (the tail conv_tail just closed), as assembly() waits for it
+    void lib_covers(vrs_h* h, const std::string& rollout, uint64_t end) {
+        int rc = vrs_wait(h, rollout.c_str(), opts_.timeout_ms);
+        if (rc) throw std::runtime_error("VRS_WAIT_" + std::to_string(rc));
+        if (!end) return;
+        rc = vrs_wait_off(h, rollout.c_str(), end, opts_.timeout_ms);
+        if (rc == -2) {
+            char* raw = nullptr; size_t n = 0;
+            int discovered = vrs_assemble_b(h, rollout.c_str(), 258400, &raw, &n); vrs_free(raw);
+            if (discovered < 0 || discovered == 2) throw std::runtime_error("VRS_ASSEMBLE_" + std::to_string(discovered));
+            rc = vrs_wait_off(h, rollout.c_str(), end, opts_.timeout_ms);
+        }
+        if (rc) throw std::runtime_error("VRS_WAIT_OFF_" + std::to_string(rc));
+    }
+    using FileCache = std::unordered_map<std::string, std::unique_ptr<File>>;
+    static File& opened(FileCache& cache, const std::string& path) { auto& f = cache[path]; if (!f) f.reset(new File(path)); return *f; }
+    static uint64_t line_length(const File& f, uint64_t off) {  // the line at off, without its newline
+        char buf[65536]; uint64_t n = 0;
+        for (;;) {
+            const size_t got = f.read(buf, sizeof buf, off + n);
+            if (!got) throw std::runtime_error("ROLLOUT_LINE_UNTERMINATED_AT_" + std::to_string(off));
+            if (const char* nl = static_cast<const char*>(std::memchr(buf, '\n', got))) return n + uint64_t(nl - buf);
+            n += got;
+        }
+    }
+    // One view entry of a Replay row: an original block (Claude: the transcript block of the converted line, sha checked; the app: the block of
+    // the rollout line itself), clipped by the side's budget of code points.
+    struct ViewEntry { uint64_t o = 0, n = 0, k = 0; std::string h, role, ts, text; };
+    static std::string clip_points(const std::string& s, size_t& left) {
+        size_t at = 0, cps = 0;
+        while (at < s.size() && cps < left) { at += point_bytes(uint8_t(s[at])); ++cps; }
+        left -= cps; return s.substr(0, std::min(at, s.size()));
+    }
+    bool app_file(const std::string& f) const { return cx_ && under(f, cx_sessions_); }
+    // the original line a rollout line stands for: (original path, o) — Claude through cc (C2), the app the identity (D-u3)
+    std::pair<std::string, uint64_t> origin_of(const std::string& f, const std::string& nu, uint64_t off, uint64_t len, FileCache& rollouts) {
+        if (app_file(f)) return {f, off};
+        const Json j = parse(opened(rollouts, f).range(off, len), true);
+        return {opts_.projects + "/" + nu, j.at("payload").at("cc").at("o").uint()};
+    }
+    void view_of(const std::string& f, const std::string& nu, uint64_t off, uint64_t len, FileCache& rollouts, FileCache& originals, std::vector<ViewEntry>& out) {
+        if (!app_file(f)) {
+            const Json j = parse(opened(rollouts, f).range(off, len), true); const Json& p = j.at("payload");
+            const std::string original = opts_.projects + "/" + nu;
+            Restored r = restore_item(opened(originals, original), vp_u8(vp_path(original).filename()), p);
+            const Json& c = p.at("cc");
+            out.push_back({c.at("o").uint(), c.at("n").uint(), std::stoull(c.at("k").text()), c.at("h").text(), p.at("role").text(),
+                           r.item.at("timestamp").text(), r.item.at("text").text()});
+            return;
+        }
+        const std::string raw = opened(rollouts, f).range(off, len), hash = sha256(raw);
+        const Json j = parse(raw, true);
+        if (j.get("type") != "response_item") throw std::runtime_error("SOURCE_TYPE_MISMATCH_AT_" + std::to_string(off));
+        const Json& q = j.at("payload"); const std::string role = q.get("role");
+        if (q.get("type") != "message" || (role != "user" && role != "assistant")) throw std::runtime_error("SOURCE_ROLE_MISMATCH_AT_" + std::to_string(off));
+        const Json& content = q.at("content");
+        if (content.kind != Json::array) return;
+        for (size_t k = 0; k < content.values.size(); ++k) {
+            const Json& b = content.values[k]; const std::string bt = b.get("type");
+            std::string body;
+            if (bt == "input_text" || bt == "output_text") body = b.at("text").text();
+            else if (bt == "input_image" && role == "user") body = "[image · " + vp_u8(vp_path(f).filename()) + "#" + std::to_string(off) + "+" + std::to_string(len) + " k=" + std::to_string(k) + "]";
+            else continue;
+            out.push_back({off, len, k, hash, role, j.get("timestamp"), std::move(body)});
+        }
+    }
+    static std::string theta_text(uint64_t th) {  // θ is in 2^-20 s since 1970 (lib7 parse_ts)
+        const std::time_t s = std::time_t(th >> 20); std::tm tm{};
+#ifdef _WIN32
+        gmtime_s(&tm, &s);
+#else
+        gmtime_r(&s, &tm);
+#endif
+        char b[40]; std::snprintf(b, sizeof b, "%04d-%02d-%02dT%02d:%02d:%02d.%03uZ", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min,
+                                  tm.tm_sec, unsigned(((th & 0xFFFFF) * 1000) >> 20));
+        return b;
+    }
+    static const char* phase_text(uint64_t p) { return p == 0 ? "A" : p == 1 ? "R" : "U"; }
+    // D-r9′ (4판): the strength of a Replay row names its synapse σ* by the text of its cue; no σ*: strength 0
+    static std::string strength_text(const std::string& w, int64_t sh, const Json& cues) {
+        if (sh < 0 || size_t(sh) >= cues.values.size()) return "강도 0";
+        return "강도 " + w + " (시냅스 「" + cues.values[size_t(sh)].values.at(0).text() + "」)";
+    }
+    // The page key of D-r9: (section, the Recall order key, the UTF-16 offset in the row) = sec:wbits:m:θₑ:o0:c:ν (ν last: it may hold ':')
+    struct SKey { uint64_t sec = 0, wb = 0, m = 0, the = 0, o0 = 0, c = 0; std::string nu; };
+    static uint64_t wbits(double w) { uint64_t b; std::memcpy(&b, &w, 8); return b; }  // w ≥ 0: the bits order as the values
+    static SKey skey_of(const Json& row) {
+        return {row.at("sec").uint(), wbits(std::strtod(row.at("w").text().c_str(), nullptr)), row.at("m").uint(), row.at("the").uint(), row.at("o0").uint(), 0, row.at("nu").text()};
+    }
+    static bool sbefore(const SKey& a, const SKey& b) {  // D-r7/D-r8 order inside a section, sections in turn
+        if (a.sec != b.sec) return a.sec < b.sec;
+        if (a.wb != b.wb) return a.wb > b.wb;
+        if (a.m != b.m) return a.m > b.m;
+        if (a.the != b.the) return a.the > b.the;
+        if (a.nu != b.nu) { const int c = vp_path(a.nu).compare(vp_path(b.nu)); if (c) return c < 0; }
+        return a.o0 < b.o0;
+    }
+    static std::string stoken(SKey k, uint64_t c) {
+        char wb[17]; std::snprintf(wb, sizeof wb, "%016llx", (unsigned long long)k.wb);
+        return std::to_string(k.sec) + ":" + wb + ":" + std::to_string(k.m) + ":" + std::to_string(k.the) + ":" + std::to_string(k.o0) + ":" + std::to_string(c) + ":" + k.nu;
+    }
+    static SKey skey_parse(const std::string& t) {
+        std::vector<std::string_view> f; size_t a = 0;
+        for (int i = 0; i < 6; ++i) { const size_t e = t.find(':', a); if (e == t.npos) throw std::runtime_error("START_EXPECT_SEARCH_KEY"); f.push_back(std::string_view(t).substr(a, e - a)); a = e + 1; }
+        auto num = [](std::string_view s, int base) {
+            uint64_t n = 0; auto r = std::from_chars(s.data(), s.data() + s.size(), n, base);
+            if (s.empty() || r.ec != std::errc{} || r.ptr != s.data() + s.size()) throw std::runtime_error("START_EXPECT_SEARCH_KEY"); return n;
+        };
+        SKey k{num(f[0], 10), num(f[1], 16), num(f[2], 10), num(f[3], 10), num(f[4], 10), num(f[5], 10), t.substr(a)};
+        if (k.sec > 1 || k.nu.empty()) throw std::runtime_error("START_EXPECT_SEARCH_KEY");
+        return k;
+    }
+    Json search(const Json& request, unsigned slot) {
+        vrs_h* h = ready_lib();
+        const std::string query = request.at("query").text();
+        if (query.empty()) throw std::runtime_error("QUERY_EMPTY");
+        const size_t budget = budget_of(request);
+        // D-q8′: W(t) = the caller's file ∪ the live Claude writers' transcripts ∪ the live app writers' rollouts, each closed and in lib7
+        std::vector<std::string> W;
+        auto claude = [&](const std::string& transcript) {
+            Entry* e = nullptr;
+            try { e = &identify(transcript); }
+            catch (const std::runtime_error& x) { if (std::string_view(x.what()) == "PATH_NOT_FOUND") return; throw; }
+            if (std::find(W.begin(), W.end(), e->rollout) != W.end()) return;
+            const TailResult tail = conv_tail(e->transcript, e->rollout, cover(*e), slot, h, &e->handles);
+            clean_marker(*e);
+            lib_covers(h, e->rollout, tail.output_end);
+            W.push_back(e->rollout);
+        };
+        auto app = [&](const std::string& rollout) {
+            const std::string r = canonical(rollout);
+            if (std::find(W.begin(), W.end(), r) != W.end()) return;
+            cx_core_settle(*cx_, r); W.push_back(r);
+        };
+        if (const auto* t = request.find("transcript")) claude(t->text());
+        if (const auto* t = request.find("thread")) {
+            if (!cx_) throw std::runtime_error("CODEX_ROOT_ABSENT");
+            const std::string r = cx_core_thread_file(*cx_, t->text());
+            if (std::find(W.begin(), W.end(), r) == W.end()) W.push_back(r);
+        }
+        auto writers = [&](const std::string& root, bool own) {
+            vw::scan(root, true, [&](const vw::Witness& found) {
+                const auto w = vw::read(found.name); if (w.source.empty()) return;
+                bool live = true;
+                try { live = vw::alive(w); } catch (const std::exception&) {}
+                if (live) vw::sources(w, [&](const std::string& source) { if (own) claude(source); else app(source); });
+            });
+        };
+        writers(opts_.writer_markers, true);
+        if (cx_) writers(cx_writers_, false);
+        std::vector<const char*> wp; for (const auto& p : W) wp.push_back(p.c_str());
+        char* raw = nullptr; size_t n = 0;
+        const int rc = vrs_search(h, query.data(), query.size(), wp.data(), unsigned(wp.size()), &raw, &n);
+        std::unique_ptr<char, decltype(&vrs_free)> bytes(raw, vrs_free);
+        if (rc == 1) throw std::runtime_error("NOT_READY");
+        if (rc) throw std::runtime_error("VRS_SEARCH_" + std::to_string(rc));
+        const Json res = parse(std::string_view(raw, n));
+        const auto& rows = res.at("rows").values;
+        const uint64_t Q = res.at("Q").uint(), rare = res.at("rare").uint(), common = res.at("common").uint(), D = res.at("D").uint();
+        // the start: the first row not before the key (no request state)
+        size_t begin = 0; uint64_t body_start = 0;
+        if (const auto* st = request.find("start")) {
+            const SKey key = skey_parse(st->text()); body_start = key.c;
+            begin = size_t(std::lower_bound(rows.begin(), rows.end(), key, [](const Json& r, const SKey& k) { return sbefore(skey_of(r), k); }) - rows.begin());
+            if (body_start) {
+                if (begin == rows.size()) throw std::runtime_error("START_NOT_IN_RESULT");
+                const SKey at = skey_of(rows[begin]);
+                if (sbefore(key, at) || sbefore(at, key)) throw std::runtime_error("START_NOT_IN_RESULT");
+            }
+        }
+        // KQ10: every cue common or no Déjà vu: the cue table under the marker
+        std::string table;
+        if (D == 0 || (Q && common == Q)) for (const auto& c : res.at("cues").values) {
+            const uint64_t d = c.values.at(1).uint();
+            table += "\n· 「" + c.values.at(0).text() + "」 df=" + (d > 64 ? std::string(">64") : std::to_string(d)) + (d == 0 ? " 없음" : d > 64 ? " 흔함" : " 드묾");
+        }
+        auto token = [&](size_t i, uint64_t c) { return i == rows.size() ? std::string("끝") : stoken(skey_of(rows[i]), c); };
+        const std::string start = token(begin, body_start);
+        auto marker = [&](size_t count, const std::string& next) {
+            return "⟦vrs-search v2 · 단서 " + std::to_string(Q) + " (드묾 " + std::to_string(rare) + " · 흔함 " + std::to_string(common) + ") · Déjà vu " +
+                std::to_string(D) + " · Recall " + std::to_string(res.at("R").uint()) + " · Replay " + std::to_string(res.at("rho").uint()) + " · 재검증 " +
+                std::to_string(res.at("re").uint()) + " · 행 " + std::to_string(count) + "/" + std::to_string(rows.size()) + " · start=" + start + " · next=" + next + "⟧" + table;
+        };
+        FileCache rollouts, originals;
+        struct Rendered { std::string header, body; size_t units; Json item; };
+        auto render = [&](const Json& r) {
+            const std::string f = r.at("f").text(), nu = r.at("nu").text();
+            const bool replay = r.at("sec").uint() == 0;
+            const uint64_t ro0 = r.at("o0").uint();
+            // the turn range [o0, o1] in the original: its task_started line and its last line (D-r1), as line starts
+            const auto first = origin_of(f, nu, ro0, line_length(opened(rollouts, f), ro0), rollouts);
+            uint64_t o1 = first.second;
+            if (const auto* lo = r.find("lo")) o1 = origin_of(f, nu, lo->uint(), r.at("ln").uint(), rollouts).second;
+            const std::string where = nu + "#" + std::to_string(first.second);
+            const std::string w = r.at("w").text(), m = std::to_string(r.at("m").uint()) + "/" + std::to_string(Q);
+            const int64_t sh = int64_t(std::stoll(r.at("sh").scalar));
+            Json item = Json::obj();
+            item.set("sec", r.at("sec")).set("path", Json::str(first.first)).set("nu", Json::str(nu)).set("o0", Json::num(first.second)).set("o1", Json::num(o1))
+                .set("open", r.at("open")).set("the", r.at("the")).set("w", Json::str(w)).set("sh", r.at("sh")).set("m", r.at("m"));
+            Rendered out;
+            if (!replay) {
+                std::string places; Json pl = Json::arr();
+                for (const auto& v : r.at("vi").values) {
+                    const uint64_t vo = v.values.at(0).uint(), vn = v.values.at(1).uint();
+                    std::vector<ViewEntry> ents;
+                    if (app_file(f)) {
+                        const Json j = parse(opened(rollouts, f).range(vo, vn), true); const Json* c = j.at("payload").find("content");
+                        const size_t blocks = c && c->kind == Json::array ? c->values.size() : 0;
+                        for (size_t b = 0; b < blocks; ++b) ents.push_back({vo, vn, b, {}, {}, {}, {}});
+                    } else {
+                        const Json j = parse(opened(rollouts, f).range(vo, vn), true); const Json& c = j.at("payload").at("cc");
+                        ents.push_back({c.at("o").uint(), c.at("n").uint(), std::stoull(c.at("k").text()), {}, {}, {}, {}});
+                    }
+                    for (const auto& e : ents) {
+                        places += " (" + std::to_string(e.o) + ", " + std::to_string(e.k) + ")";
+                        Json a = Json::arr(); a.values.push_back(Json::num(e.o)); a.values.push_back(Json::num(e.k)); pl.values.push_back(std::move(a));
+                    }
+                }
+                out.header = "[" + w + " · 맞음 " + m + " · " + theta_text(r.at("the").uint()) + " · " + nu + "#" + std::to_string(first.second) + "–" +
+                             std::to_string(o1) + (r.at("open").truth() ? " · 열림" : "") + " · 항목" + places + "]";
+                item.set("items", std::move(pl));
+                out.units = 0; out.item = std::move(item);
+                return out;
+            }
+            // Replay: the view items (the request side clipped at 1500 code points in order, the final answer at 2500), each line with ℓ
+            std::vector<ViewEntry> view;
+            for (const auto& v : r.at("vi").values) view_of(f, nu, v.values.at(0).uint(), v.values.at(1).uint(), rollouts, originals, view);
+            size_t req_left = 1500, fin_left = 2500;
+            std::string body; Json vj = Json::arr();
+            for (auto& e : view) {
+                e.text = clip_points(e.text, e.role == "user" ? req_left : fin_left);
+                if (!body.empty()) body += "\n";
+                body += "항목 " + std::to_string(e.o) + "+" + std::to_string(e.n) + " k=" + std::to_string(e.k) + " · " + (e.role == "user" ? "사용자" : "답") +
+                        " · " + e.ts + " · sha " + e.h.substr(0, 16);
+                uint64_t ell = 0;
+                for (size_t a = 0; a <= e.text.size(); ++ell) {
+                    const size_t z = e.text.find('\n', a);
+                    body += "\n" + std::to_string(ell) + "│" + e.text.substr(a, z == std::string::npos ? std::string::npos : z - a);
+                    if (z == std::string::npos) break;
+                    a = z + 1;
+                }
+                Json x = Json::obj(); x.set("o", Json::num(e.o)).set("n", Json::num(e.n)).set("k", Json::num(e.k)).set("h", Json::str(e.h)).set("role", Json::str(e.role))
+                    .set("timestamp", Json::str(e.ts)).set("text", Json::str(e.text));
+                vj.values.push_back(std::move(x));
+            }
+            const uint64_t pq = r.at("pq").uint(), pe = r.at("pe").uint();
+            std::string re;
+            if (r.at("re").uint() && !r.at("n").uint()) re = " · 재검증 (질의 관측이 사전 기권: 창·보기 줄·출처·규칙)";  // D-r5: no evidence to show
+            else if (r.at("re").uint()) {
+                std::string hits; for (const auto& x : r.at("hits").values) hits += (hits.empty() ? "" : ",") + std::to_string(x.uint());
+                re = " · 재검증 (맞은 보기 줄 " + std::to_string(r.at("sq").uint()) + "/" + std::to_string(r.at("n").uint()) + " · τ′ " + r.at("tau").text() +
+                     " · 줄 " + (hits.empty() ? "-" : hits) + ")";
+                item.set("sq", r.at("sq")).set("n", r.at("n")).set("tau", r.at("tau")).set("hits", r.at("hits"));
+            }
+            out.header = "[" + theta_text(r.at("the").uint()) + " · " + where + " · " + strength_text(w, sh, res.at("cues")) + " · 맞음 " + m + " · 입력 " + phase_text(pq) +
+                         " / 경험 " + phase_text(pe) + re + (r.at("open").truth() ? " · 열림" : "") + "]\n";
+            item.set("pq", r.at("pq")).set("pe", r.at("pe")).set("re", r.at("re")).set("view", std::move(vj));
+            out.units = utf16_units(body); out.body = std::move(body); out.item = std::move(item);
+            return out;
+        };
+        // pages as vrs_restore: a position on the row sequence (row key + UTF-16 body offset c); no request state
+        size_t end = begin, used = 0; uint64_t c = body_start;
+        std::string fragments; Json items = Json::arr();
+        while (end < rows.size()) {
+            Rendered rd = render(rows[end]);
+            const std::string& body = rd.body;
+            const size_t byte_start = body_byte_at(body, c);
+            const std::string continuation = "[이어짐 c=" + std::to_string(c) + " · " + rd.header.substr(1);
+            std::string head = c ? continuation : rd.header;
+            const std::string after = token(end + 1, 0);
+            size_t take = body.size() - byte_start, take_units = rd.units - size_t(c);
+            const bool whole = used + 2 + utf16_units(head) + take_units + utf16_units(marker(items.values.size() + 1, after)) <= budget;
+            if (!whole) {
+                head = continuation; take = 0; take_units = 0;
+                const size_t overhead = used + 2 + utf16_units(head);
+                size_t at = byte_start, u = 0;
+                while (at < body.size()) {
+                    const size_t pn = point_bytes(uint8_t(body[at])); u += pn == 4 ? 2 : 1; at += pn;
+                    if (at == body.size()) break;
+                    if (overhead + u + utf16_units(marker(items.values.size() + 1, token(end, c + u))) > budget) break;
+                    take = at - byte_start; take_units = u;
+                }
+                if (!take) {
+                    if (items.values.empty()) throw std::runtime_error("PAGE_BUDGET_TOO_SMALL_AT_" + token(end, c));
+                    break;
+                }
+            }
+            Json item = std::move(rd.item);
+            item.set("text", Json::str(body.substr(byte_start, take))).set("c", Json::num(c));
+            items.values.push_back(std::move(item)); fragments += "\n\n" + head + body.substr(byte_start, take);
+            used += 2 + utf16_units(head) + take_units;
+            if (!whole) { c += take_units; break; }
+            ++end; c = 0;
+        }
+        const std::string next = token(end, c);
+        std::string text = marker(items.values.size(), next) + fragments;
+        if (utf16_units(text) > budget) throw std::runtime_error("MARKER_EXCEEDS_BUDGET");
+        Json out = Json::obj(); out.set("ok", Json::flag(true)).set("text", Json::str(text)).set("items", std::move(items))
+            .set("total", Json::num(rows.size())).set("next", end == rows.size() ? Json{} : Json::str(next)).set("utf16", Json::num(utf16_units(text)));
+        for (const char* f : {"Q", "rare", "common", "D", "R", "rho", "re", "reads", "open", "us"}) out.set(f, res.at(f));
+        Json w = Json::arr(); for (const auto& p : W) w.values.push_back(Json::str(p)); out.set("W", std::move(w));
+        return out;
+    }
 public:
     explicit Daemon(Options opts) : opts_(std::move(opts)) {}
     std::string respond(std::string_view bytes, unsigned slot) {
@@ -571,6 +875,13 @@ public:
                 if (cx_) roots.values.push_back(Json::str("_cx/"));
                 Json out = Json::obj(); out.set("ok", Json::flag(true)).set("proto", Json::num(2)).set("roots", std::move(roots));
                 return out.dump() + '\n';
+            }
+            if (op == "search") {  // K5 D-r9: either bridge (a transcript or a thread names the caller's file of W)
+                const auto began = std::chrono::steady_clock::now();
+                std::string reply = search(j, slot).dump() + '\n';
+                if (opts_.test_metrics) std::fprintf(stderr, "VRS_TEST_SEARCH us=%lld elapsed_us=%lld\n",
+                    (long long)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - began).count(), elapsed_us());
+                return reply;
             }
             if (j.find("thread") && op != "read") {
                 if (!cx_) throw std::runtime_error("CODEX_ROOT_ABSENT");
@@ -602,6 +913,17 @@ public:
             }
             if (op == "diag_assemble") return restore(j, slot, true).dump() + '\n';
             if (op == "read") return read(j).dump() + '\n';
+            if (opts_.test_metrics && op == "k5_stats") {  // T3-6 / T3-9: the K5 layer's state and byte count (vrs_k5_stats)
+                vrs_h* h = lib(); vrs_k5dbg d{}; if (h) vrs_k5_stats(h, &d);
+                Json out = Json::obj(); out.set("ok", Json::flag(true)).set("open", Json::flag(h != nullptr)).set("lib_ready", Json::flag(h && vrs_ready(h) == 1))
+                    .set("k5_ready", Json::flag(h && vrs_k5_ready(h) == 1)).set("pend", Json::num(uint64_t(std::max<int64_t>(0, d.pend))))
+                    .set("size", Json::num(d.size)).set("base_entries", Json::num(d.base_entries)).set("node_bytes", Json::num(d.node_bytes))
+                    .set("unit_bytes", Json::num(d.unit_bytes)).set("units_built", Json::num(d.units_built)).set("units_restored", Json::num(d.units_restored))
+                    .set("claimed", Json::num(d.claimed)).set("shadow_bad", Json::num(d.shadow_bad)).set("syn_bytes", Json::num(d.syn_bytes)).set("syn_miss", Json::num(d.syn_miss))
+                    .set("ex_total", Json::num(d.ex_total)).set("ex_bad", Json::num(d.ex_bad)).set("ready_us", Json::num(uint64_t(std::max<int64_t>(0, d.ready_us))))
+                    .set("elapsed_us", Json::num(uint64_t(elapsed_us())));
+                return out.dump() + '\n';
+            }
             throw std::runtime_error("UNKNOWN_OPERATION");
         } catch (const std::exception& e) {
             std::string message(e.what());
