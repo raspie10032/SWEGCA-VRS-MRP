@@ -1,2 +1,2 @@
-1.3.2
-source k6r (K6: each prompt recalls from the one store of both apps, the memory reached by the rarest cue first)
+1.3.3
+source k6r (K6: each prompt recalls from the one store of both apps; the app hook runs in PowerShell and cmd, and a new thread recalls from its first message)

@@ -786,10 +786,16 @@ class Daemon {
         first = false;
         if (const auto* t = request.find("thread")) {
             if (!cx_) throw std::runtime_error("CODEX_ROOT_ABSENT");
-            const std::string r = cx_core_thread_file(*cx_, t->text());
-            if (caller) *caller = r;
-            lib_caller = r;
-            if (std::find(W.begin(), W.end(), r) == W.end()) W.push_back(r);
+            std::string r;
+            try { r = cx_core_thread_file(*cx_, t->text()); }
+            catch (const std::runtime_error& x) {  // K6 §8 KL4-3: a new thread's first prompt comes before its rollout; it has no turn to leave out
+                if (!recall || std::string_view(x.what()) != "THREAD_ROLLOUT_NOT_FOUND") throw;
+            }
+            if (!r.empty()) {
+                if (caller) *caller = r;
+                lib_caller = r;
+                if (std::find(W.begin(), W.end(), r) == W.end()) W.push_back(r);
+            }
         }
         auto writers = [&](const std::string& root, bool own) {
             vw::scan(root, true, [&](const vw::Witness& found) {
