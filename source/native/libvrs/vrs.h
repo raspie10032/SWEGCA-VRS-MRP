@@ -8,6 +8,16 @@ extern "C" {
 #endif
 
 typedef struct vrs_h vrs_h;
+/* VRS_onePC_v1.md B1: one rollout tree of a store with several roots. A file of the root is named tag + its path below dir in the store
+   (lookup, shard name, order); its judged values (root32, identity, seeds) use only the path below dir and the uuid in its name. */
+typedef struct {
+  const char* tag;            /* "" for at most one root; otherwise ends in '/', no tag a prefix of another, never "_ext/" */
+  const char* dir;
+  const char* change_markers; /* default dir + ".marks" */
+  const char* writer_markers; /* default dir + ".writers" */
+  void (*recover)(void*);     /* optional host witness recovery of this root */
+  void* recover_context;
+} vrs_root;
 typedef struct {
   const char* sessions_dir;   /* the rollout tree (the lossless originals) */
   const char* index_dir;      /* the index shards; NULL or "" = no persistence */
@@ -20,15 +30,18 @@ typedef struct {
   const char* writer_markers; /* G3: standalone overflow W; default sessions_dir + ".writers" */
   void (*recover)(void*);     /* optional host witness recovery, replaces standalone M/W enumeration */
   void* recover_context;
+  const vrs_root* roots;      /* VRS_onePC_v1.md B1: nroots > 0 replaces sessions_dir / change_markers / writer_markers / recover */
+  unsigned nroots;
 } vrs_opts;
 
-int  vrs_open(const vrs_opts*, vrs_h** out);          /* 0 ok; workers and the file watcher start, the call returns at once (P-2 runs in the background) */
+int  vrs_open(const vrs_opts*, vrs_h** out);          /* 0 ok; workers and the file watcher start, the call returns at once (P-2 runs in the background); -5 roots overlap (R1/R2), -6 several roots on a platform without the per-root watcher */
 int  vrs_ready(vrs_h*);                               /* 1 ready, 0 restoring, <0 error */
 int  vrs_insert(vrs_h*, const char* path, uint64_t off, const char* line, size_t len);  /* line = the rollout line at byte offset off (no newline); idempotent per (path, off) */
 int  vrs_written(vrs_h*, const char* path, uint64_t off);  /* the line inserted at (path, off) is on disk: the library lets go of its copy; 0 ok, -3 no copy held for that key, -2 unknown file, -1 bad argument */
 int  vrs_refresh(vrs_h*, const char* path); /* G3 observation only: schedule this file's disk tail; no global scan */
 int  vrs_assemble(vrs_h*, const char* path, char** json, size_t* len);  /* 0 ok, 1 not ready, 2 required input over budget, <0 error */
 int  vrs_assemble_b(vrs_h*, const char* path, uint64_t budget, char** json, size_t* len);  /* the same with an explicit budget */
+int  vrs_assemble_loc(vrs_h*, const char* path, uint64_t budget, char** json, size_t* len);  /* VRS_MCP_codexapp_v1 7.2: vrs_assemble_b with every item as {"f","o","n","p"} (its file, offset, length, payload) */
 int  vrs_wait(vrs_h*, const char* path, uint64_t timeout_ms);  /* 0 = ready, lineage set up, and explicitly inserted prefix published; NULL path = ready; 1 = timeout, <0 = error */
 int  vrs_wait_off(vrs_h*, const char* path, uint64_t off, uint64_t timeout_ms);  /* VRS_MCP_libvrs_v1 13.2: 0 = the processed prefix of `path` covers byte off, 1 = not within timeout_ms, <0 = error */
 void vrs_free(char*);

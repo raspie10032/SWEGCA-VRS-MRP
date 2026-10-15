@@ -1,12 +1,12 @@
 {
   "name": "vrs-lib",
   "owner": { "name": "raspie10032" },
-  "description": "vrs-lib for Claude Code: exact pre-compaction originals after compaction (Windows).",
+  "description": "vrs-lib (SWEGCA VRS-MRP) for Claude Code and the ChatGPT desktop app: exact pre-compaction originals after compaction (Windows).",
   "plugins": [
     {
       "name": "vrs-lib",
       "source": ".",
-      "description": "Restores the exact pre-compaction originals after Claude Code compacts the context (Windows)."
+      "description": "Restores the exact pre-compaction originals after Claude Code or the ChatGPT desktop app compacts the context (Windows)."
     }
   ]
 }

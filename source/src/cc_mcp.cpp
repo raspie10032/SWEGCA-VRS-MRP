@@ -1,4 +1,5 @@
 #include "cc_mcp.hpp"
+#include "cx_mode.hpp"
 #include "cc_io.hpp"
 #include "vrs_witness.h"
 #include <chrono>
@@ -30,11 +31,24 @@ std::string claude_home() {
     if (h.empty()) throw BridgeError("HOME_UNAVAILABLE");
     return h + "/.claude";
 }
+#ifdef _WIN32
+// VRS_onePC_v1.md B7: the home of this PC's one daemon, the same for hooks and both bridges: VRS_HOME, else %LOCALAPPDATA%/vrs-lib.
+std::string pc_home() {
+    auto h = env("VRS_HOME"); if (!h.empty()) return h;
+    h = env("LOCALAPPDATA"); if (h.empty()) throw BridgeError("LOCALAPPDATA_UNAVAILABLE");
+    return h + "/vrs-lib";
+}
+std::string data_dir() {
+    auto d = env("VRS_CC_DATA"); if (!d.empty()) return d;
+    return pc_home();
+}
+#else
 // Hooks and the MCP server of one plugin both receive CLAUDE_PLUGIN_DATA, so they agree on one data directory.
 std::string data_dir() {
     for (const char* k : {"VRS_CC_DATA", "CLAUDE_PLUGIN_DATA"}) { auto d = env(k); if (!d.empty()) return d; }
     return claude_home() + "/vrs-lib";
 }
+#endif
 
 std::string read_all_stdin() {
     std::string input; char buf[4096];
@@ -111,17 +125,13 @@ bool start_matches(const Json* recorded, uint64_t birth) {
 
 class Client {
     std::string projects_, data_, endpoint_;
+    std::vector<std::string> daemon_args_;  // VRS_onePC_v1.md B7
     std::map<std::string, std::string> transcripts_;  // session id -> transcript, as the Python Identity cache
 public:
     Client() {
         projects_ = env("VRS_CC_PROJECTS"); if (projects_.empty()) projects_ = claude_home() + "/projects";
-        data_ = data_dir();
-        endpoint_ = env("VRS_CC_ENDPOINT");
-        if (endpoint_.empty()) {
-            std::string user;
-            for (const char* k : {"LOGNAME", "USER", "LNAME", "USERNAME"}) if (!(user = env(k)).empty()) break;
-            endpoint_ = "\\\\.\\pipe\\vrs-lib-" + user;
-        }
+        PcDaemon d = pc_daemon("VRS_CC_DATA", "VRS_CC_ENDPOINT");
+        data_ = d.data; endpoint_ = d.endpoint; daemon_args_ = std::move(d.args);
     }
     std::string transcript() {
         const std::string sessions = claude_home() + "/sessions";
@@ -166,13 +176,8 @@ public:
             self.resize(n); exe = narrow(self);
         }
         if (GetFileAttributesW(wide(exe).c_str()) == INVALID_FILE_ATTRIBUTES) throw BridgeError("DAEMON_BINARY_NOT_FOUND");
-        std::vector<std::string> args{exe, "--projects", projects_, "--data", data_, "--endpoint", endpoint_};
-        std::string roots = env("VRS_CC_READ_ROOTS");
-        for (size_t a = 0; a <= roots.size();) {
-            size_t b = roots.find(';', a); if (b == std::string::npos) b = roots.size();
-            if (b > a) { args.push_back("--read-root"); args.push_back(roots.substr(a, b - a)); }
-            a = b + 1;
-        }
+        std::vector<std::string> args{exe};  // VRS_onePC_v1.md B7: the one daemon, started the same way by either bridge
+        args.insert(args.end(), daemon_args_.begin(), daemon_args_.end());
         std::wstring line;
         for (const auto& a : args) { if (!line.empty()) line += L' '; line += quote_arg(wide(a)); }
         STARTUPINFOW si{}; si.cb = sizeof si; PROCESS_INFORMATION pi{};
@@ -251,6 +256,48 @@ Json invoke(Client& client, const Json& params) {
 }
 #endif
 }  // namespace
+
+const char* const mcp_tools_json = TOOLS;
+const char* const mcp_not_ready_text = NOT_READY_TEXT;
+
+#ifdef _WIN32
+// VRS_onePC_v1.md B7. The old data is named only when the home is the default one: a test (or any other home) never moves anything.
+PcDaemon pc_daemon(const char* legacy_data_env, const char* legacy_endpoint_env) {
+    PcDaemon d;
+    const bool given_home = !env(legacy_data_env).empty() || !env("VRS_HOME").empty() ||
+                            !env(legacy_endpoint_env).empty() || !env("VRS_ENDPOINT").empty();  // a home or a pipe of its own: never migrate
+    d.data = env(legacy_data_env); if (d.data.empty()) d.data = pc_home();
+    d.endpoint = env(legacy_endpoint_env); if (d.endpoint.empty()) d.endpoint = env("VRS_ENDPOINT");
+    if (d.endpoint.empty()) {
+        std::string user;
+        for (const char* k : {"LOGNAME", "USER", "LNAME", "USERNAME"}) if (!(user = env(k)).empty()) break;
+        d.endpoint = "\\\\.\\pipe\\vrs-lib-" + user;
+    }
+    auto is_dir = [](const std::string& p) { std::error_code ec; return fs::is_directory(vp_io_path(p), ec); };
+    std::string projects = env("VRS_CC_PROJECTS"); if (projects.empty()) projects = claude_home() + "/projects";
+    std::string codex = env("CODEX_HOME");
+    if (codex.empty()) { const auto p = env("USERPROFILE"); if (!p.empty()) codex = p + "/.codex"; }
+    if (is_dir(projects)) { d.args.push_back("--projects"); d.args.push_back(projects); }
+    if (!codex.empty() && is_dir(codex + "/sessions")) { d.args.push_back("--codex-home"); d.args.push_back(codex); }
+    d.args.insert(d.args.end(), {"--data", d.data, "--endpoint", d.endpoint});
+    for (const char* k : {"VRS_CC_READ_ROOTS", "VRS_CX_READ_ROOTS"}) {
+        const std::string roots = env(k);
+        for (size_t a = 0; a <= roots.size();) {
+            size_t b = roots.find(';', a); if (b == std::string::npos) b = roots.size();
+            if (b > a) { d.args.push_back("--read-root"); d.args.push_back(roots.substr(a, b - a)); }
+            a = b + 1;
+        }
+    }
+    if (!given_home) {
+        std::string old_claude = env("CLAUDE_PLUGIN_DATA"); if (old_claude.empty()) old_claude = claude_home() + "/plugins/data/vrs-lib-vrs-lib";
+        if (is_dir(old_claude)) { d.args.push_back("--migrate-claude"); d.args.push_back(old_claude); }
+        if (!codex.empty() && is_dir(codex + "/vrs-lib")) { d.args.push_back("--migrate-codex"); d.args.push_back(codex + "/vrs-lib"); }
+    }
+    return d;
+}
+#else
+PcDaemon pc_daemon(const char*, const char*) { throw std::runtime_error("ONE_PC_DAEMON_WINDOWS_ONLY"); }
+#endif
 
 int writer_hook(const std::string& dir, const std::string& host) {
     const auto j = parse(read_all_stdin());

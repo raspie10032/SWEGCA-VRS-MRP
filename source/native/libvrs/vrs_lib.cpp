@@ -1022,7 +1022,8 @@ struct Snap {  // what vrs_assemble reads of a file: built per call from the pro
 struct Sess {
   // ---- immutable after creation
   uint32_t sg = 0;
-  std::string rel, path;      // path relative to the sessions directory (the shard name), absolute path
+  std::string rel, path;      // path relative to its root's directory, absolute path
+  std::string nu;             // VRS_onePC_v1.md D-u1: the name in the store = tag + rel (lookup, shard name, order)
   uint32_t root32 = 0;        // stable lineage id of this file (hash of rel); a cell remembers lineage roots by it
   bool is_base = false;       // the file existed when the library was opened
   bool memmode = false;       // no file behind this session (an ephemeral thread): the lines stay in memory
@@ -1191,12 +1192,16 @@ void free_ret(RetNode* r) {
 #endif
   delete r;
 }
-struct Store {
-  // ---- options (vrs_opts)
-  std::string sdir, idir;
+struct Root {  // VRS_onePC_v1.md B2: fixed at open
+  std::string tag, dir, pre;  // pre = dir + "/"
   std::string change_markers, writer_markers;
   void (*recover)(void*) = nullptr;
   void* recover_context = nullptr;
+};
+struct Store {
+  // ---- options (vrs_opts)
+  std::string sdir, idir;     // sdir = roots[0].dir (the Linux watcher, which takes one root)
+  std::vector<Root> roots;
   bool segwin = false;
   uint64_t budget = 258400;
   unsigned nworkers = 12;
@@ -1236,7 +1241,7 @@ struct Store {
   std::atomic<uint32_t> restore_left{0};   // restore tasks not finished; observed independently by every worker
   std::atomic<int> stop{0};
   std::vector<std::thread> workers;
-  std::thread watcher;
+  std::vector<std::thread> watchers;  // B4: one per root
   int stop_fd = -1;
   std::chrono::steady_clock::time_point t_open;
   std::atomic<int64_t> ready_us{-1};
@@ -1291,7 +1296,7 @@ struct Store {
 bool BOrder::ent_less(const BEnt& a, const BEnt& b) const {
   if (a.the != b.the) return a.the < b.the;
   const TurnRec& x = *st->TT[a.id]; const TurnRec& y = *st->TT[b.id];
-  if (x.sg != y.sg) { const int c = vp_path(st->sx(x.sg).path).compare(vp_path(st->sx(y.sg).path)); if (c != 0) return c < 0; }
+  if (x.sg != y.sg) { const int c = vp_path(st->sx(x.sg).nu).compare(vp_path(st->sx(y.sg).nu)); if (c != 0) return c < 0; }  // B5: the store name
   return x.ord0 < y.ord0;
 }
 void BOrder::insert(uint32_t id, uint64_t the) {
@@ -2225,7 +2230,16 @@ struct Ctx {
       return -1; };
     auto thv = [&](uint32_t m) -> uint64_t { const uint64_t th = S.it[m].th; const int k = vseg(m); return k < 0 ? th : std::max<uint64_t>(th, Mb[k]); };
     auto vpos = [&](uint32_t m) -> size_t { const int k = vseg(m); return k < 0 ? SIZE_MAX : vs_off[k] + S.it[m].pos; };
-    auto okey = [&](uint32_t m) { const size_t vp = vpos(m); return std::make_pair(thv(m), vp != SIZE_MAX ? uint64_t(vp) : uint64_t(L.size()) + m); };
+    // D17 order; VRS_onePC_v1.md B5: an item outside the view is placed by (its file's store name, its place in that file), not by its id
+    auto oless = [&](uint32_t a, uint32_t b) {
+      const uint64_t ta = thv(a), tb = thv(b);
+      if (ta != tb) return ta < tb;
+      const size_t va = vpos(a), vb = vpos(b);
+      if (va != SIZE_MAX || vb != SIZE_MAX) return va != vb && va < vb;  // the view first, in view order
+      const Item& ia = S.it[a]; const Item& ib = S.it[b];
+      if (ia.sess != ib.sess) return vp_path(S.sx(ia.sess).nu).compare(vp_path(S.sx(ib.sess).nu)) < 0;
+      return ia.pos < ib.pos;
+    };
     // last position with theta <= t (binary search; D-ctx-01); 7th stage: by thv, which does not go down along the view (lemma 7-1)
     auto ub = [&](const View& v) { size_t lo = 0, h = v.size(); while (lo < h) { size_t md = (lo + h) / 2; if (thv(v[md]) <= t) lo = md + 1; else h = md; } return lo; };
     size_t hi = ub(L);
@@ -2416,7 +2430,17 @@ struct Ctx {
         }
         std::vector<std::pair<double, std::pair<uint32_t, int>>> fv;
         for (auto& e : far) fv.push_back({sig[e.first], e});
-        std::sort(fv.begin(), fv.end(), [](const auto& a, const auto& b) { return a.first != b.first ? a.first > b.first : a.second < b.second; });
+        // B5: sigma down, then the turn by (its file's store name, ord0), then the part; never the turn id (an arrival number)
+        std::sort(fv.begin(), fv.end(), [&](const auto& a, const auto& b) {
+          if (a.first != b.first) return a.first > b.first;
+          const uint32_t ya = a.second.first, yb = b.second.first;
+          if (ya != yb) {
+            const TurnRec& x = *S.TT[ya]; const TurnRec& y = *S.TT[yb];
+            if (x.sg != y.sg) { const int c = vp_path(S.sx(x.sg).nu).compare(vp_path(S.sx(y.sg).nu)); if (c != 0) return c < 0; }
+            if (x.ord0 != y.ord0) return x.ord0 < y.ord0;
+          }
+          return a.second.second < b.second.second;
+        });
         for (auto& [sv, e] : fv) {
           const auto items = vi_part(S, e.first, e.second);
           uint64_t sz = 0; for (uint32_t z : items) if (!taken.count(z)) sz += S.it[z].tok;
@@ -2426,7 +2450,7 @@ struct Ctx {
         }
       }
       A.ids.assign(taken.begin(), taken.end());
-      std::sort(A.ids.begin(), A.ids.end(), [&](uint32_t a, uint32_t b) { return okey(a) < okey(b); });  // D17
+      std::sort(A.ids.begin(), A.ids.end(), oless);  // D17
       canon_mem(A);
       A.tokens = used; A.c3_na = true;
       return A;
@@ -2597,7 +2621,7 @@ void parse_shard(const uint8_t* base, size_t n, Shard& sh) {
   }
 }
 
-std::string shard_path(const Store& S, const Sess& ss) { return S.idir + "/" + ss.rel + ".vx"; }
+std::string shard_path(const Store& S, const Sess& ss) { return S.idir + "/" + ss.nu + ".vx"; }  // B2: the store name
 VrsFdLease shard_fd(Store& S, Sess& ss) {
   if (S.idir.empty() || ss.memmode) return {};
   return VrsHandleCache<VrsFd>::local().get(ss.shard_key, [&]() -> VrsFdLease {
@@ -3806,9 +3830,9 @@ uint64_t fid_key(const std::string& path) {  // the id in the file name: the las
   const std::string_view id = f.substr(f.size() - 36);
   return fnv(id.data(), id.size());
 }
-Sess* make_sess(const std::string& path, const std::string& rel, uint32_t sg, bool base) {
+Sess* make_sess(const std::string& path, const std::string& rel, const std::string& nu, uint32_t sg, bool base) {
   Sess* s = new Sess;
-  s->sg = sg; s->path = path; s->rel = rel; s->root32 = uint32_t(fnv(rel.data(), rel.size()) & 0x7fffffffu);
+  s->sg = sg; s->path = path; s->rel = rel; s->nu = nu; s->root32 = uint32_t(fnv(rel.data(), rel.size()) & 0x7fffffffu);
   s->is_base = base;
   s->memmode = !base && !vp_exists(path.c_str());  // no file behind it: an ephemeral thread keeps its lines in memory (P-4)
   s->restored.store(base ? 0 : 1);
@@ -3832,13 +3856,14 @@ std::string canon_path(const Store& S, const char* p) {
   const std::string in(p);
 #ifdef _WIN32  // KW2
   // Exact Store spelling already has P-12 identity. Aliases still take the realpath path below.
-  const std::string pre = S.sdir + "/";
-  if (in.size() > pre.size() && in.compare(0, pre.size(), pre) == 0) {
-    const std::string rel = in.substr(pre.size());
-    if (const auto* nd = S.pathmap.find(fnv(rel.data(), rel.size()))) {
+  for (const Root& r : S.roots) {  // B4: at most one root matches (R1)
+    if (in.size() <= r.pre.size() || in.compare(0, r.pre.size(), r.pre) != 0) continue;
+    const std::string nu = r.tag + in.substr(r.pre.size());
+    if (const auto* nd = S.pathmap.find(fnv(nu.data(), nu.size()))) {
       const uint32_t sg = nd->val.load(std::memory_order_acquire);
       if (sg) if (Sess* ss = S.sp[sg].load(std::memory_order_acquire)) if (ss->path == in) return ss->path;
     }
+    break;
   }
   using vp_cache_t = std::unordered_map<std::string, std::string>;
   vp_cache_t& cache = VP_TLS(vp_cache_t);
@@ -3869,12 +3894,29 @@ std::string canon_path(const Store& S, const char* p) {
     cut = up;
   }
 }
+// R2 (VRS_onePC_v1.md D-u1, B1): a path below the root with tag "" that would read as another root's name (or as "_ext/") is not a file of the store
+bool name_clash(const Store& S, const std::string& rel) {
+  if (rel.compare(0, 5, "_ext/") == 0) return true;
+  for (const Root& r : S.roots) if (!r.tag.empty() && rel.compare(0, r.tag.size(), r.tag) == 0) return true;
+  return false;
+}
+// B4: the root of p (R1: at most one), rel = its path below that root, nu = tag + rel; a path below no root is "_ext/…" as before. false = R2 refuses it.
+bool store_name(const Store& S, const std::string& p, std::string& rel, std::string& nu) {
+  for (const Root& r : S.roots) {
+    if (p.size() <= r.pre.size() || p.compare(0, r.pre.size(), r.pre) != 0) continue;
+    rel = p.substr(r.pre.size());
+    if (r.tag.empty() && name_clash(S, rel)) return false;
+    nu = r.tag + rel;
+    return true;
+  }
+  const size_t sl = p.rfind('/'); rel = "_ext/" + hex64(fnv(p.data(), p.size())) + "_" + (sl == std::string::npos ? p : p.substr(sl + 1));
+  nu = rel;
+  return true;
+}
 Sess* get_sess(Store& S, const std::string& p, bool create) {
-  std::string rel;
-  const std::string pre = S.sdir + "/";
-  if (p.size() > pre.size() && p.compare(0, pre.size(), pre) == 0) rel = p.substr(pre.size());
-  else { const size_t sl = p.rfind('/'); rel = "_ext/" + hex64(fnv(p.data(), p.size())) + "_" + (sl == std::string::npos ? p : p.substr(sl + 1)); }
-  const uint64_t key = fnv(rel.data(), rel.size());
+  std::string rel, nu;
+  if (!store_name(S, p, rel, nu)) return nullptr;
+  const uint64_t key = fnv(nu.data(), nu.size());
   if (const auto* nd = S.pathmap.find(key)) {
     const uint32_t v = nd->val.load(std::memory_order_acquire);
     if (v) { Sess* s; while (!(s = S.sp[v].load(std::memory_order_acquire))) { S.insert_waits.fetch_add(1, std::memory_order_relaxed); std::this_thread::yield(); } return s; }
@@ -3882,7 +3924,7 @@ Sess* get_sess(Store& S, const std::string& p, bool create) {
   if (!create) return nullptr;
   const uint32_t sg = S.nsg.fetch_add(1) + 1;
   if (sg > 65535) { S.nsg.fetch_sub(1); return nullptr; }
-  Sess* ns = make_sess(p, rel, sg, false);
+  Sess* ns = make_sess(p, rel, nu, sg, false);
   auto* nd = S.pathmap.get(key);
   uint32_t e = 0;
   if (nd->val.compare_exchange_strong(e, sg, std::memory_order_acq_rel)) {
@@ -3942,25 +3984,27 @@ void scan_new_dir(Store& S, const std::string& dir, AddW& addw) {  // a director
     if (ss) ask_ingest(S, *ss);
   }
 }
-void recover_overflow(Store& S) {
+void recover_root(Store& S, const Root& r) {  // B4: the overflow of one root recovers that root only
   if (S.stop.load()) return;
-  if (S.recover) { S.recover(S.recover_context); return; }
+  if (r.recover) { r.recover(r.recover_context); return; }
   auto visit = [&](const vw::Witness& w) {
     vw::sources(w, [&](const std::string& path) {
       const auto p = canon_path(S, path.c_str());
-      if (p.compare(0, S.sdir.size() + 1, S.sdir + "/")) throw std::runtime_error("WITNESS_OUTSIDE_SESSIONS");
+      if (p.size() <= r.pre.size() || p.compare(0, r.pre.size(), r.pre)) throw std::runtime_error("WITNESS_OUTSIDE_SESSIONS");
       if (Sess* ss = get_sess(S, p, true)) ask_ingest(S, *ss);
     });
   };
-  vw::scan(S.change_markers, false, visit);
-  vw::scan(S.writer_markers, true, visit);
+  vw::scan(r.change_markers, false, visit);
+  vw::scan(r.writer_markers, true, visit);
 }
+void recover_overflow(Store& S) { for (const Root& r : S.roots) recover_root(S, r); }
 #ifdef _WIN32
 // the watcher on Windows (13.2): ReadDirectoryChangesW over the whole tree (the platform layer); a name is taken the way the inotify loop below takes it
-void watch_main(Store* Sp) {
+// B4: one watcher per root
+void watch_main(Store* Sp, size_t ri) {
   Store& S = *Sp;
-  struct Ctx { Store* S; };
-  Ctx c{Sp};
+  struct Ctx { Store* S; const Root* r; };
+  Ctx c{Sp, &Sp->roots[ri]};
   auto on_path = [](void* cx, const std::string& path, bool dir) {
     Store& S = *static_cast<Ctx*>(cx)->S;
     auto addw = [](const std::string&) {};  // the tree watch already covers a new directory
@@ -3973,12 +4017,12 @@ void watch_main(Store* Sp) {
   };
   auto on_overflow = [](void* cx) {  // G3: only outstanding witnesses, never the history tree.
     Store& S = *static_cast<Ctx*>(cx)->S;
-    try { recover_overflow(S); } catch (...) { S.ready.store(-1); bump_progress(S); }
+    try { recover_root(S, *static_cast<Ctx*>(cx)->r); } catch (...) { S.ready.store(-1); bump_progress(S); }
   };
-  vp_watch_tree(S.sdir, S.stop_fd, &c, on_path, on_overflow);
+  vp_watch_tree(c.r->dir, S.stop_fd, &c, on_path, on_overflow);
 }
 #else
-void watch_main(Store* Sp) {
+void watch_main(Store* Sp, size_t) {  // one root only on this platform (vrs_open refuses several: B4)
   Store& S = *Sp;
   const int fd = inotify_init1(IN_CLOEXEC);
   if (fd < 0) return;
@@ -4072,6 +4116,67 @@ int assemble_impl(Store& S, const char* path, uint64_t B, char** json, size_t* j
   *json = m; *jlen = out.size();
   return rc;
 }
+// VRS_MCP_codexapp_v1.md 7.2 (not a definition): the same assembly as assemble_impl, written out with the original place of every item.
+// Each item is {"f": the file the item was read from, "o": its byte offset, "n": its length without the newline, "p": the payload as assemble_impl sends it}.
+// Nothing chosen, counted or judged differs: the steps below are those of assemble_impl, only the output names the fields an Item already holds.
+std::string loc_quote(const std::string& s) {
+  static const char hx[] = "0123456789abcdef";
+  std::string o = "\"";
+  for (unsigned char c : s) {
+    if (c == '"' || c == '\\') { o += '\\'; o += char(c); }
+    else if (c < 0x20) { o += "\\u00"; o += hx[c >> 4]; o += hx[c & 15]; }
+    else o += char(c);
+  }
+  return o + "\"";
+}
+int assemble_loc_impl(Store& S, const char* path, uint64_t B, char** json, size_t* jlen) {
+  const auto t0 = std::chrono::steady_clock::now();
+  *json = nullptr; *jlen = 0;
+  const int rd = S.ready.load(std::memory_order_acquire);
+  if (rd < 0) return -2;
+  if (rd == 0) return 1;
+  if (!path || !*path || B == 0) return -1;
+  Sess* ss = get_sess(S, canon_path(S, path), true);
+  if (!ss) return -3;
+  if (!ss->is_base && !ss->memmode && ss->front.load(std::memory_order_acquire) == 0) ingest_file_tail(S, *ss, false);
+  EbrGuard guard(S);
+  ensure_segs(S, *ss, false);
+  Snap sn;
+  if (!read_state(S, *ss, sn)) return 1;
+  Asm A; bool lemma = false;
+  {
+    tl_lemma = false;
+    const Segs* sg = ss->segs.load(std::memory_order_acquire);
+    const std::vector<std::array<uint32_t, 4>> empty_segs;
+    Ctx C(S, *ss, sn, sn.segok && sg ? &sg->v : &empty_segs);
+    A = C.assemble(ss->sg, sn.lastth, B);
+    lemma = tl_lemma;
+  }
+  std::string out;
+  int rc = 0;
+  if (lemma) { out = "{\"ok\":false,\"error\":\"observer: lemma E violated\"}"; rc = -5; }
+  else if (A.overflow) { out = "{\"ok\":false,\"error\":\"required input over budget\"}"; rc = 2; }
+  else {
+    auto lines = fetch(S, A.ids);
+    uint64_t cb = 0; uint32_t chg = 0, drp = 0;
+    residue(S, A.ids, lines, &cb, &chg, &drp);
+    out = "{\"ok\":true,\"items\":[";
+    bool first = true;
+    for (size_t q = 0; q < lines.size(); q++) {
+      if (lines[q].empty()) continue;
+      if (!first) out += ','; first = false;
+      const Item& m = S.it[A.ids[q]];
+      out += "{\"f\":" + loc_quote(S.sx(m.sess).path) + ",\"o\":" + std::to_string(m.off) + ",\"n\":" + std::to_string(m.len) + ",\"p\":" + payload_of(lines[q]) + "}";
+    }
+    const double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count();
+    out += "],\"tokens\":" + std::to_string(A.tokens) + ",\"us\":" + std::to_string((long long)us) + "}";
+  }
+  char* m = (char*)std::malloc(out.size() + 1);
+  if (!m) return -4;
+  std::memcpy(m, out.data(), out.size()); m[out.size()] = 0;
+  *json = m; *jlen = out.size();
+  return rc;
+}
 
 }  // namespace
 
@@ -4081,16 +4186,37 @@ struct vrs_h { Store* S; };
 extern "C" {
 
 int vrs_open(const vrs_opts* o, vrs_h** out) {
-  if (!o || !out || !o->sessions_dir) return -1;
+  if (!o || !out || (!o->nroots && !o->sessions_dir) || (o->nroots && !o->roots)) return -1;
   *out = nullptr;
   std::unique_ptr<Store> sp(new Store);
   Store& S = *sp;
-  S.sdir = o->sessions_dir;
-  while (S.sdir.size() > 1 && S.sdir.back() == '/') S.sdir.pop_back();
-  if (char* r = vp_realpath(S.sdir.c_str())) { S.sdir = r; std::free(r); }  // P-12: the store root as the file system spells it
-  S.change_markers = o->change_markers ? o->change_markers : S.sdir + ".marks";
-  S.writer_markers = o->writer_markers ? o->writer_markers : S.sdir + ".writers";
-  S.recover = o->recover; S.recover_context = o->recover_context;
+  // B1: nroots == 0 is the one root of before, with tag ""
+  const vrs_root legacy{"", o->sessions_dir, o->change_markers, o->writer_markers, o->recover, o->recover_context};
+  const vrs_root* given = o->nroots ? o->roots : &legacy;
+  const unsigned nr = o->nroots ? o->nroots : 1;
+#ifndef _WIN32
+  if (nr > 1) return -6;  // B4: the inotify watcher takes one root
+#endif
+  for (unsigned i = 0; i < nr; i++) {
+    if (!given[i].dir) return -1;
+    Root r; r.tag = given[i].tag ? given[i].tag : ""; r.dir = given[i].dir;
+    while (r.dir.size() > 1 && r.dir.back() == '/') r.dir.pop_back();
+    if (char* rp = vp_realpath(r.dir.c_str())) { r.dir = rp; std::free(rp); }  // P-12: the store root as the file system spells it
+    r.pre = r.dir + "/";
+    r.change_markers = given[i].change_markers ? given[i].change_markers : r.dir + ".marks";
+    r.writer_markers = given[i].writer_markers ? given[i].writer_markers : r.dir + ".writers";
+    r.recover = given[i].recover; r.recover_context = given[i].recover_context;
+    if (!r.tag.empty() && (r.tag.back() != '/' || r.tag == "_ext/")) return -5;
+    S.roots.push_back(std::move(r));
+  }
+  for (size_t i = 0; i < S.roots.size(); i++) for (size_t j = 0; j < S.roots.size(); j++) {  // R1, R2 (tags)
+    if (i == j) continue;
+    const Root& a = S.roots[i]; const Root& b = S.roots[j];
+    if (b.pre.compare(0, a.pre.size(), a.pre) == 0) return -5;      // a's directory is b's or above it
+    if (a.tag.empty() && b.tag.empty()) return -5;                    // at most one root with tag ""
+    if (!a.tag.empty() && b.tag.compare(0, a.tag.size(), a.tag) == 0) return -5;
+  }
+  S.sdir = S.roots[0].dir;
   S.idir = o->index_dir ? o->index_dir : "";
   while (S.idir.size() > 1 && S.idir.back() == '/') S.idir.pop_back();
   if (!S.idir.empty()) { std::error_code ec; fs::create_directories(vp_io_path(S.idir), ec); if (char* r = vp_realpath(S.idir.c_str())) { S.idir = r; std::free(r); } }
@@ -4103,24 +4229,43 @@ int vrs_open(const vrs_opts* o, vrs_h** out) {
   S.nworkers = o->workers ? o->workers : std::max(1u, std::min(12u, std::thread::hardware_concurrency()));
   if (o->cpus) for (unsigned i = 0; i < o->ncpus; i++) S.cpus.push_back(o->cpus[i]);
   S.t_open = std::chrono::steady_clock::now();
-  std::vector<fs::path> files;
-  {
+  // B3: each root's tree is listed on its own (root 0 by this thread, every other root by a thread of its own, met once for the union)
+  struct Found { std::string path, rel, nu; };
+  std::vector<std::vector<Found>> per(S.roots.size());
+  std::vector<int> per_rc(S.roots.size(), 0);
+  auto list_root = [&](size_t ri) {
+    const Root& r = S.roots[ri];
     std::error_code ec;
-    if (!fs::is_directory(vp_io_path(S.sdir), ec)) return -2;
-    for (vp_recursive_directory_iterator it(vp_io_path(S.sdir), ec), e; !ec && it != e; it.increment(ec)) {
+    if (!fs::is_directory(vp_io_path(r.dir), ec)) { per_rc[ri] = -2; return; }
+    for (vp_recursive_directory_iterator it(vp_io_path(r.dir), ec), e; !ec && it != e; it.increment(ec)) {
       std::error_code e2;
       if (it->is_symlink(e2)) continue;  // P-12: a link is not a second name for the store
       if (it->is_regular_file(e2) && it->path().extension() == ".jsonl") {
 #ifdef _WIN32
-        files.push_back(vp_path(vp_u8(it->path()))); // Strip I/O namespace before path ordering.
+        const std::string p = vp_u8(vp_path(vp_u8(it->path()))); // Strip I/O namespace before path ordering.
 #else
-        files.push_back(it->path());
+        const std::string p = it->path().string();
 #endif
+        Found f; f.path = p;
+        f.rel = p.compare(0, r.pre.size(), r.pre) == 0 ? p.substr(r.pre.size()) : p;
+        if (r.tag.empty() && name_clash(S, f.rel)) { per_rc[ri] = -5; return; }  // R2 (A-u1)
+        f.nu = r.tag + f.rel;
+        per[ri].push_back(std::move(f));
       }
     }
-    if (ec) return -2;
+    if (ec) per_rc[ri] = -2;
+  };
+  {
+    std::vector<std::thread> listers;
+    for (size_t ri = 1; ri < S.roots.size(); ri++) listers.emplace_back(list_root, ri);
+    list_root(0);
+    for (auto& t : listers) t.join();
   }
-  std::sort(files.begin(), files.end());  // 42f numbers the sessions in this order
+  for (int rc : per_rc) if (rc) return rc;
+  std::vector<Found> files;
+  for (auto& v : per) for (auto& f : v) files.push_back(std::move(f));
+  // 42f numbers the sessions in this order; B3: by the store name (one root: the order of the full paths, which share the root's prefix)
+  std::sort(files.begin(), files.end(), [](const Found& a, const Found& b) { return vp_path(a.nu).compare(vp_path(b.nu)) < 0; });
   if (files.size() > 65000) files.resize(65000);
   if (!S.idir.empty()) {
     std::error_code ec; fs::create_directories(vp_io_path(S.idir), ec); if (ec) return -3;
@@ -4128,18 +4273,18 @@ int vrs_open(const vrs_opts* o, vrs_h** out) {
     const std::string mf = S.idir + "/.sessions_dir";
     std::string old;
     { std::ifstream in(vp_io_path(mf), std::ios::binary); if (in) old.assign((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>()); }
-    if (old != S.sdir) {
+    std::string now = S.sdir;  // B2: one root as before; several: "tag TAB dir" per line (a record only)
+    if (S.roots.size() > 1) { now.clear(); for (const Root& r : S.roots) now += r.tag + "\t" + r.dir + "\n"; }
+    if (old != now) {
       S.stale_index = false;  // 6th stage D12: the seeds are the file ids, not path hashes; a moved or respelled root keeps its shards
-      std::ofstream out(vp_io_path(mf), std::ios::binary | std::ios::trunc); out << S.sdir;
+      std::ofstream out(vp_io_path(mf), std::ios::binary | std::ios::trunc); out << now;
     }
   }
-  const std::string pre = S.sdir + "/";
   for (size_t f = 0; f < files.size(); f++) {
-    const std::string p = vp_u8(files[f]);
-    const std::string rel = p.compare(0, pre.size(), pre) == 0 ? p.substr(pre.size()) : p;
+    const std::string& p = files[f].path;
     const uint32_t sg = (uint32_t)f + 1;
-    Sess* ss = make_sess(p, rel, sg, true);
-    S.pathmap.get(fnv(rel.data(), rel.size()))->val.store(sg);
+    Sess* ss = make_sess(p, files[f].rel, files[f].nu, sg, true);
+    S.pathmap.get(fnv(files[f].nu.data(), files[f].nu.size()))->val.store(sg);
     S.sp[sg].store(ss);
     if (const uint64_t fk = fid_key(p)) S.fidmap.get(fk)->val.store(sg);
     S.base.push_back(ss);
@@ -4155,7 +4300,7 @@ int vrs_open(const vrs_opts* o, vrs_h** out) {
     Sr->first.seed(i, task_of(T_FIRST, S.base[i]->sg));
   }
   for (unsigned w = 0; w < Sr->nworkers; w++) Sr->workers.emplace_back(worker_main, Sr, w);
-  Sr->watcher = std::thread(watch_main, Sr);
+  for (size_t ri = 0; ri < Sr->roots.size(); ri++) Sr->watchers.emplace_back(watch_main, Sr, ri);  // B4: one per root
   *out = h;
   return 0;
 }
@@ -4276,6 +4421,10 @@ int vrs_assemble(vrs_h* h, const char* path, char** json, size_t* len) {
   if (!h || !json || !len) return -1;
   return assemble_impl(*h->S, path, h->S->budget, json, len);
 }
+int vrs_assemble_loc(vrs_h* h, const char* path, uint64_t budget, char** json, size_t* len) {
+  if (!h || !json || !len) return -1;
+  return assemble_loc_impl(*h->S, path, budget, json, len);
+}
 void vrs_free(char* p) { std::free(p); }
 
 void vrs_close(vrs_h* h) {
@@ -4286,7 +4435,7 @@ void vrs_close(vrs_h* h) {
   vp_aw_notify_all(S.work.sig);
   if (S.stop_fd >= 0) vp_stop_set(S.stop_fd);
   for (auto& t : S.workers) if (t.joinable()) t.join();
-  if (S.watcher.joinable()) S.watcher.join();
+  for (auto& w : S.watchers) if (w.joinable()) w.join();
   delete h->S;
   delete h;
 }

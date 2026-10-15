@@ -1,0 +1,18 @@
+{
+  "name": "vrs-lib",
+  "version": "1.2.0",
+  "description": "Restores this thread's exact pre-compaction originals (vrs_restore) and byte ranges of its rollout (vrs_read). SWEGCA VRS-MRP: Verification-Reinforced Synapse, Memory Recovery Plugin.",
+  "author": { "name": "raspie10032" },
+  "repository": "https://github.com/raspie10032/SWEGCA-VRS-MRP",
+  "license": "MIT AND MPL-2.0",
+  "mcpServers": "./codex/mcp.json",
+  "hooks": "./codex/hooks.json",
+  "interface": {
+    "displayName": "vrs-lib",
+    "shortDescription": "Restore pre-compaction originals",
+    "longDescription": "After this thread is compacted, vrs_restore returns the exact user messages and answers that left the live context, with their rollout positions and SHA-256; vrs_read returns an exact byte range of the rollout.",
+    "developerName": "raspie10032",
+    "category": "Developer Tools",
+    "capabilities": ["Read"]
+  }
+}

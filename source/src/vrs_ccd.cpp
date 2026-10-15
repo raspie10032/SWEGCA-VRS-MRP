@@ -5,8 +5,11 @@
 #include "cc_markers.hpp"
 #include "vrs_witness.h"
 #include "cc_mcp.hpp"
+#include "cc_page.hpp"
+#include "cx_mode.hpp"
 #include <chrono>
 #include <csignal>
+#include <fstream>
 #include <iostream>
 #include <unordered_map>
 #ifndef _WIN32
@@ -48,33 +51,10 @@ struct Options {
     unsigned workers = 6, connections = 16;
     uint64_t timeout_ms = 5000;
     bool test_metrics = std::getenv("VRS_CC_TEST_METRICS") != nullptr;
+    // VRS_onePC_v1.md B6–B8: the app root, the old data a bridge asks to move here, the event a bridge waits on
+    std::string codex_home, migrate_claude, migrate_codex;
+    uintptr_t ready_event = 0;
 };
-static size_t budget_of(const Json& j) {
-    const auto* b = j.find("budget"); uint64_t n = b ? b->uint() : 48000;
-    if (n < 1 || n > 95000) throw std::runtime_error("BUDGET_RANGE_1_TO_95000"); return size_t(n);
-}
-struct Key { uint64_t o = 0, k = 0, c = 0; auto operator<=>(const Key&) const = default; };
-static Key key_of(const std::string& s) {
-    size_t c = s.find(':'); if (c == s.npos || c == 0 || c + 1 == s.size()) throw std::runtime_error("START_EXPECT_O_K_C");
-    auto uint = [](std::string_view s) {
-        uint64_t n = 0; auto r = std::from_chars(s.data(), s.data() + s.size(), n);
-        if (r.ec != std::errc{} || r.ptr != s.data() + s.size()) throw std::runtime_error("START_EXPECT_O_K_C"); return n;
-    };
-    size_t end = s.find(':', c + 1); const std::string_view v(s);
-    return {uint(v.substr(0, c)), uint(v.substr(c + 1, end == s.npos ? s.size() - c - 1 : end - c - 1)),
-            end == s.npos ? 0 : uint(v.substr(end + 1))};
-}
-static std::string key_text(Key k) { return std::to_string(k.o) + ":" + std::to_string(k.k) + ":" + std::to_string(k.c); }
-// Bodies have already passed strict UTF-8 parsing. Positions below are code
-// point boundaries; a four-byte UTF-8 scalar occupies two UTF-16 units.
-static size_t point_bytes(unsigned char c) { return c < 0x80 ? 1 : c < 0xe0 ? 2 : c < 0xf0 ? 3 : 4; }
-static size_t body_byte_at(std::string_view body, uint64_t c) {
-    size_t at = 0; uint64_t units = 0;
-    while (at < body.size() && units < c) { size_t n = point_bytes(body[at]); units += n == 4 ? 2 : 1; at += n; }
-    if (units != c || (at == body.size() && c != 0)) throw std::runtime_error("START_BODY_POSITION_INVALID");
-    return at;
-}
-struct Restored { Key key; Json item; std::string header; size_t units; };
 
 class Daemon {
     using Clock = std::chrono::steady_clock;
@@ -92,6 +72,9 @@ class Daemon {
     size_t open_check_ = Resident::no_ready_slot;
     std::atomic<bool> scanning_{true};
     std::string sessions_, idx_;
+    std::atomic<int> open_rc_{0};         // the vrs_open failure, named in every answer (B1: -5 roots overlap)
+    std::shared_ptr<CxCore> cx_;          // VRS_onePC_v1.md B6: the app share (null: no app root on this PC)
+    std::string cx_sessions_, cx_marks_, cx_writers_;
     vrs_h* lib() const { return lib_.load(std::memory_order_acquire); }
     // KL1 (doc 14.13): ready = lib opened and its open-time restore finished (vrs_ready == 1).
     // Before that a request is answered at once, not held in vrs_wait; ready never returns to 0.
@@ -107,21 +90,54 @@ class Daemon {
         const auto began = Clock::now();
         if (opts_.test_metrics) std::fprintf(stderr, "VRS_TEST_PRELIB elapsed_us=%lld cover_reads=%llu cover_sum_us=%llu skipped=%llu\n",
             elapsed_us(), (unsigned long long)cover_reads_.load(), (unsigned long long)cover_us_.load(), (unsigned long long)skipped_.load());
-        vrs_opts vo{}; vo.sessions_dir = sessions_.c_str(); vo.index_dir = idx_.c_str(); vo.workers = opts_.workers;
-        vo.recover_context = this;
-        vo.recover = [](void* context) {
+        vrs_opts vo{}; vo.index_dir = idx_.c_str(); vo.workers = opts_.workers;
+        // VRS_onePC_v1.md B6: the Claude root (tag "", the host recovery as before) and, when this PC has one, the app root
+        vrs_root roots[2]{};
+        roots[0].tag = ""; roots[0].dir = sessions_.c_str(); roots[0].recover_context = this;
+        roots[0].recover = [](void* context) {
             auto& d = *static_cast<Daemon*>(context);
             if (!d.stopping_.load()) d.recover_watch("lib");
         };
+        if (cx_) {
+            roots[1].tag = "_cx/"; roots[1].dir = cx_sessions_.c_str();
+            roots[1].change_markers = cx_marks_.c_str(); roots[1].writer_markers = cx_writers_.c_str();
+        }
+        vo.roots = roots; vo.nroots = cx_ ? 2 : 1;
 #ifndef _WIN32
         static unsigned cpus[12] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
         vo.cpus = cpus; vo.ncpus = 12;
 #endif
         vrs_h* h = nullptr; int rc = vrs_open(&vo, &h);
-        if (rc) { std::fprintf(stderr, "vrs_open: %d\n", rc); watch_error_.store(5); return; }
+        if (rc) { std::fprintf(stderr, "vrs_open: %d\n", rc); open_rc_.store(rc); watch_error_.store(5); return; }
         lib_.store(h, std::memory_order_release);
         if (opts_.test_metrics) std::fprintf(stderr, "VRS_TEST_OPEN us=%lld elapsed_us=%lld\n", (long long)std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - began).count(), elapsed_us());
     }
+#ifdef _WIN32
+    // VRS_onePC_v1.md B8: once, before the home has an index: the old data folders a bridge named are renamed into the home (never
+    // copied: a rename that fails leaves that share to be built here). The originals are not touched. migrated.txt undoes it.
+    void migrate() {
+        auto is_dir = [](const std::string& p) { std::error_code ec; return fs::is_directory(vp_io_path(p), ec); };
+        auto exists = [](const std::string& p) { std::error_code ec; return fs::exists(vp_io_path(p), ec); };
+        if (exists(opts_.data + "/idx")) return;
+        std::vector<std::pair<std::string, std::string>> plan;
+        if (!opts_.migrate_claude.empty() && is_dir(opts_.migrate_claude) && canonical(opts_.migrate_claude) != opts_.data)
+            for (const char* n : {"cc_rollout", "idx", "cover", "change-markers", "writer-markers"})
+                plan.push_back({canonical(opts_.migrate_claude) + "/" + n, opts_.data + "/" + n});
+        // the app's shards go below the Claude index (tag "_cx/"), so they come after it
+        if (!opts_.migrate_codex.empty() && is_dir(opts_.migrate_codex)) {
+            plan.push_back({canonical(opts_.migrate_codex) + "/idx", opts_.data + "/idx/_cx"});
+            plan.push_back({canonical(opts_.migrate_codex) + "/cstar", opts_.data + "/cstar"});
+        }
+        std::string done;
+        for (const auto& [from, to] : plan) {
+            if (!is_dir(from) || exists(to)) continue;
+            { std::error_code ec; fs::create_directories(vp_io_path(to).parent_path(), ec); }
+            if (MoveFileExW(vp_io_path(from).c_str(), vp_io_path(to).c_str(), 0)) done += from + "\t" + to + "\n";
+            else std::fprintf(stderr, "vrs_ccd: MIGRATE_RENAME_FAILED_%lu %s\n", (unsigned long)GetLastError(), from.c_str());
+        }
+        if (!done.empty()) { std::ofstream out(vp_io_path(opts_.data + "/migrated.txt"), std::ios::binary | std::ios::app); out << done; }
+    }
+#endif
     void finish_one() {
         pending_.fetch_sub(1, std::memory_order_acq_rel);
         // Notification never executes open_lib, including under work-set saturation.
@@ -533,100 +549,33 @@ class Daemon {
             if (p.get("type") != "message" || (p.get("role") != "user" && p.get("role") != "assistant")) continue;
             if (p.at("cc").at("o").uint() < boundary) items.push_back(restore_item(source, filename, p));
         }
-        std::sort(items.begin(), items.end(), [](const Restored& x, const Restored& y) { return x.key < y.key; });
-        for (size_t i = 1; i < items.size(); ++i) if (items[i - 1].key == items[i].key) throw std::runtime_error("DUPLICATE_ITEM_KEY");
-        size_t begin = 0; uint64_t body_start = 0;
-        if (const auto* start = request.find("start")) {
-            Key key = key_of(start->text()); body_start = key.c; key.c = 0;
-            auto it = std::lower_bound(items.begin(), items.end(), key, [](const Restored& a, Key k) { return a.key < k; });
-            if (it == items.end() || it->key != key) throw std::runtime_error("START_NOT_IN_ASSEMBLY"); begin = size_t(it - items.begin());
-        }
-        Key start_key = items.empty() ? Key{} : items[begin].key; start_key.c = body_start;
-        const std::string start = items.empty() ? "끝" : key_text(start_key);
-        auto marker = [&](size_t count, const std::string& next) {
-            return "⟦vrs-restore v1 · 세션 " + session + " · 경계 " + (boundary == UINT64_MAX ? "없음" : std::to_string(boundary)) +
-                " · 항목 " + std::to_string(count) + "/" + std::to_string(items.size()) + " · start=" + start + " · next=" + next + "⟧";
-        };
-        size_t end = begin, used = 0; uint64_t c = body_start;
-        std::string fragments; Json result_items = Json::arr();
-        auto next_text = [&] { if (end == items.size()) return std::string("끝"); Key k = items[end].key; k.c = c; return key_text(k); };
-        while (end < items.size()) {
-            const Restored& item = items[end]; const std::string& body = item.item.at("text").scalar;
-            const size_t byte_start = body_byte_at(body, c);
-            const std::string continuation = "[이어짐 c=" + std::to_string(c) + " · " + item.header.substr(1);
-            std::string head = c ? continuation : item.header;
-            const std::string after = end + 1 == items.size() ? "끝" : key_text(items[end + 1].key);
-            size_t take = body.size() - byte_start, take_units = item.units - size_t(c);
-            bool whole = used + 2 + utf16_units(head) + take_units + utf16_units(marker(result_items.values.size() + 1, after)) <= budget;
-            if (!whole) {
-                head = continuation; take = 0; take_units = 0;
-                const size_t overhead = used + 2 + utf16_units(head);
-                size_t at = byte_start, u = 0;
-                while (at < body.size()) {
-                    const size_t n = point_bytes(body[at]); u += n == 4 ? 2 : 1; at += n;
-                    if (at == body.size()) break; // The whole remainder was tested above.
-                    Key next = item.key; next.c = c + u;
-                    if (overhead + u + utf16_units(marker(result_items.values.size() + 1, key_text(next))) > budget) break;
-                    take = at - byte_start; take_units = u;
-                }
-                if (!take) {
-                    if (result_items.values.empty()) throw std::runtime_error("PAGE_BUDGET_TOO_SMALL_AT_" + next_text());
-                    break;
-                }
-            }
-            const std::string part = body.substr(byte_start, take);
-            Json fragment = item.item; fragment.set("text", Json::str(part)).set("c", Json::num(c));
-            result_items.values.push_back(std::move(fragment)); fragments += "\n\n" + head + part;
-            used += 2 + utf16_units(head) + take_units;
-            if (!whole) { c += take_units; break; }
-            ++end; c = 0;
-        }
-        const std::string next = next_text();
-        std::string text = marker(result_items.values.size(), next) + fragments;
-        if (utf16_units(text) > budget) throw std::runtime_error("MARKER_EXCEEDS_BUDGET");
-        Json out = Json::obj(); out.set("ok", Json::flag(true)).set("text", Json::str(text)).set("items", std::move(result_items))
-            .set("total", Json::num(items.size())).set("boundary", boundary == UINT64_MAX ? Json{} : Json::num(boundary))
-            .set("next", end == items.size() ? Json{} : Json::str(next)).set("utf16", Json::num(utf16_units(text)));
-        return out;
+        return restore_page(items, request, budget, session, boundary);
     }
     Json read(const Json& request) {
         const size_t budget = budget_of(request); const std::string path = canonical(request.at("path").text());
-        bool permitted = under(path, opts_.projects);
+        bool permitted = under(path, opts_.projects) || (cx_ && under(path, cx_sessions_));  // B6: either app's originals
         for (const auto& root : opts_.read_roots) permitted = permitted || under(path, root);
         if (!permitted) throw std::runtime_error("READ_OUTSIDE_ROOT");
-        File file(path); uint64_t start = request.at("start").uint(), end = request.at("end").uint();
-        if (start > end || end > file.size()) throw std::runtime_error("READ_RANGE_INVALID");
-        // At most 4 UTF-8 bytes per UTF-16 unit, plus the envelope reserve.
-        std::string bytes = file.range(start, std::min<uint64_t>(end - start, uint64_t(budget) * 4 + 4));
-        auto header = [&](size_t n, const std::string& hash) {
-            uint64_t e = start + n;
-            return "⟦vrs-read v1 · " + path + "#" + std::to_string(start) + "+" + std::to_string(n) + " · sha " + hash +
-                " · next=" + (e == end ? "끝" : std::to_string(e)) + "⟧\n";
-        };
-        // The text protocol supports UTF-8 ranges; invalid/split encodings are
-        // explicit errors, never decoded with replacement characters.
-        size_t units = 0, chosen = 0, at = 0;
-        while (at < bytes.size()) {
-            const size_t prior = at; uint32_t cp;
-            try { cp = utf8_next(bytes, at); }
-            catch (...) { if (start + bytes.size() < end && bytes.size() - prior < 4) break; throw; }
-            units += cp > 0xffff ? 2 : 1;
-            if (units + utf16_units(header(at, std::string(64, '0'))) > budget) break;
-            if (cp == '\n' || start + at == end) chosen = at;
-        }
-        if (!chosen && start != end) throw std::runtime_error("READ_LINE_EXCEEDS_BUDGET");
-        bytes.resize(chosen); const std::string digest = sha256(bytes); std::string text = header(chosen, digest) + bytes;
-        if (utf16_units(text) > budget) throw std::runtime_error("READ_HEADER_EXCEEDS_BUDGET");
-        Json out = Json::obj(); out.set("ok", Json::flag(true)).set("text", Json::str(text)).set("bytes", Json::str(bytes)).set("sha256", Json::str(digest))
-            .set("start", Json::num(start)).set("end", Json::num(start + chosen)).set("next", start + chosen == end ? Json{} : Json::num(start + chosen))
-            .set("utf16", Json::num(utf16_units(text))); return out;
+        (void)budget; return read_page(path, request);
     }
 public:
     explicit Daemon(Options opts) : opts_(std::move(opts)) {}
     std::string respond(std::string_view bytes, unsigned slot) {
         try {
+            if (open_rc_.load()) throw std::runtime_error("VRS_OPEN_" + std::to_string(open_rc_.load()));
             if (watch_error_.load()) throw std::runtime_error("WATCH_INCOMPLETE_" + std::to_string(watch_error_.load()));
             Json j = parse(bytes); const std::string op = j.at("op").text();
+            // VRS_onePC_v1.md B6: proto 2 = one daemon, two shares; a request that names a thread is the app's
+            if (op == "hello") {
+                Json roots = Json::arr(); roots.values.push_back(Json::str(""));
+                if (cx_) roots.values.push_back(Json::str("_cx/"));
+                Json out = Json::obj(); out.set("ok", Json::flag(true)).set("proto", Json::num(2)).set("roots", std::move(roots));
+                return out.dump() + '\n';
+            }
+            if (j.find("thread") && op != "read") {
+                if (!cx_) throw std::runtime_error("CODEX_ROOT_ABSENT");
+                return cx_core_respond(*cx_, bytes);
+            }
             if (opts_.test_metrics && op == "test_watch") {
                 return std::string("{\"ok\":true,\"drop\":") + (test_drop_.load() ? "true" : "false") + "}\n";
             }
@@ -676,21 +625,20 @@ void Daemon::start() {
     const auto began = std::chrono::steady_clock::now();
     test_drop_.store(opts_.test_metrics && std::getenv("VRS_CC_TEST_DROP_WATCH"));
     test_markers_only_ = opts_.test_metrics && std::getenv("VRS_CC_TEST_MARKERS_ONLY");
-    opts_.projects = canonical(opts_.projects);
     fs::create_directories(vp_io_path(opts_.data)); opts_.data = canonical(opts_.data);
-    if (opts_.change_markers.empty()) opts_.change_markers = opts_.data + "/change-markers";
-    if (opts_.writer_markers.empty()) opts_.writer_markers = opts_.data + "/writer-markers";
-    for (auto* root : {&opts_.change_markers, &opts_.writer_markers}) {
-        fs::create_directories(vp_io_path(*root)); *root = canonical(*root); marker_directories(*root);
-        if (*root == opts_.projects || under(*root, opts_.projects)) throw std::runtime_error("MARKERS_MUST_BE_OUTSIDE_PROJECTS");
-    }
-    if (opts_.change_markers == opts_.writer_markers) throw std::runtime_error("MARKER_ROOTS_MUST_DIFFER");
-    for (auto& root : opts_.read_roots) root = canonical(root);
+    // VRS_onePC_v1.md B7: a PC without Claude Code: an empty projects tree in the home (nothing is written into another app's home)
+    if (opts_.projects.empty()) { opts_.projects = opts_.data + "/no-projects"; fs::create_directories(vp_io_path(opts_.projects)); }
+    opts_.projects = canonical(opts_.projects);
     stop_fd_ = vp_stop_new(); if (stop_fd_ < 0) throw std::runtime_error("STOP_OPEN_FAILED");
 #ifdef _WIN32
+    // B8: the pipe comes first, so only the process that serves the name moves old data into the home
     first_pipe_ = CreateNamedPipeW(vp_io_path(opts_.endpoint).c_str(), PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE,
         PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS, PIPE_UNLIMITED_INSTANCES, 65536, 65536, 0, nullptr);
+    // The bridge that started this process waits for this one fact: the name is served (by this process or an earlier one).
+    if (opts_.ready_event) { HANDLE e = reinterpret_cast<HANDLE>(opts_.ready_event); SetEvent(e); CloseHandle(e); opts_.ready_event = 0; }
     if (first_pipe_ == INVALID_HANDLE_VALUE) throw std::runtime_error("PIPE_ALREADY_RUNNING_OR_UNAVAILABLE");
+    migrate();
+    if (opts_.test_metrics && std::getenv("VRS_CC_TEST_EXIT_AFTER_MIGRATE")) std::exit(0);  // V5: the moved tree is listed with nothing else written
 #else
     listen_fd_ = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0); if (listen_fd_ < 0) throw std::runtime_error("SOCKET_OPEN_FAILED");
     sockaddr_un addr{}; addr.sun_family = AF_UNIX;
@@ -701,8 +649,26 @@ void Daemon::start() {
     if (bind(listen_fd_, reinterpret_cast<sockaddr*>(&addr), socklen_t(offsetof(sockaddr_un, sun_path) + opts_.endpoint.size()))) throw std::runtime_error("SOCKET_ALREADY_RUNNING_OR_UNAVAILABLE");
     if (listen(listen_fd_, 128)) throw std::runtime_error("SOCKET_LISTEN_FAILED");
 #endif
+    if (opts_.change_markers.empty()) opts_.change_markers = opts_.data + "/change-markers";
+    if (opts_.writer_markers.empty()) opts_.writer_markers = opts_.data + "/writer-markers";
+    for (auto* root : {&opts_.change_markers, &opts_.writer_markers}) {
+        fs::create_directories(vp_io_path(*root)); *root = canonical(*root); marker_directories(*root);
+        if (*root == opts_.projects || under(*root, opts_.projects)) throw std::runtime_error("MARKERS_MUST_BE_OUTSIDE_PROJECTS");
+    }
+    if (opts_.change_markers == opts_.writer_markers) throw std::runtime_error("MARKER_ROOTS_MUST_DIFFER");
+    for (auto& root : opts_.read_roots) root = canonical(root);
     sessions_ = opts_.data + "/cc_rollout"; idx_ = opts_.data + "/idx";
     fs::create_directories(vp_io_path(sessions_)); fs::create_directories(vp_io_path(idx_));
+    // B6: the app share, when this PC has the app's sessions tree (nothing is created in another app's home)
+    if (!opts_.codex_home.empty()) {
+        std::error_code ec;
+        if (fs::is_directory(vp_io_path(opts_.codex_home + "/sessions"), ec)) {
+            cx_ = cx_core(opts_.codex_home, opts_.data, opts_.read_roots, opts_.timeout_ms, [this] { return lib(); });
+            cx_sessions_ = cx_core_sessions(*cx_);
+            cx_marks_ = opts_.data + "/cx-marks"; cx_writers_ = opts_.data + "/cx-writers";
+            fs::create_directories(vp_io_path(cx_marks_)); fs::create_directories(vp_io_path(cx_writers_));
+        }
+    }
     if (opts_.test_metrics) std::fprintf(stderr, "VRS_TEST_START elapsed_us=%lld\n", elapsed_us());
     resident_.reset(new Resident(opts_.workers, [this](size_t id, unsigned slot) { work(id, slot); }));
     open_check_ = resident_->prepare_ready(
@@ -826,6 +792,12 @@ int main(int argc, char** argv) {
         }
         // D-P1/D-P2 (doc 14.21): the plugin runs this one executable as its MCP server and as its hooks.
         if (argc == 2 && std::string(argv[1]) == "--mcp") return cc::mcp_main();
+        // VRS_MCP_codexapp_v1.md 7.3/7.4: the ChatGPT desktop app (Codex) mode, the MCP server and the daemon it starts.
+        if (argc == 4 && std::string(argv[1]) == "--mcp" && std::string(argv[2]) == "--host" && std::string(argv[3]) == "codex") return cc::cx_mcp_main();
+        if (argc >= 2 && std::string(argv[1]) == "--codex-daemon") {
+            std::vector<std::string> rest; for (int i = 2; i < argc; ++i) rest.push_back(argv[i]);
+            return cc::cx_daemon_main(rest);
+        }
         if (argc == 3 && std::string(argv[1]) == "--hook") return cc::hook_main(argv[2]);
         if (argc == 5 && std::string(argv[1]) == "--writer-hook" && std::string(argv[3]) == "--host")
             return cc::writer_hook(argv[2], argv[4]);
@@ -852,10 +824,14 @@ int main(int argc, char** argv) {
             else if (a == "--workers") o.workers = unsigned(std::stoul(v));
             else if (a == "--connections") o.connections = unsigned(std::stoul(v));
             else if (a == "--timeout-ms") o.timeout_ms = std::stoull(v);
+            else if (a == "--codex-home") o.codex_home = v;          // VRS_onePC_v1.md B6
+            else if (a == "--migrate-claude") o.migrate_claude = v;  // B8
+            else if (a == "--migrate-codex") o.migrate_codex = v;
+            else if (a == "--ready-event") o.ready_event = uintptr_t(std::stoull(v));
             else throw std::runtime_error("UNKNOWN_OPTION");
         }
-        if (o.projects.empty() || o.data.empty() || o.endpoint.empty() || !o.workers || o.workers > 64 || !o.connections || o.connections > 64 || o.workers + o.connections > cc::cover_slots)
-            throw std::runtime_error("usage: vrs_ccd --projects ROOT --data DIR --endpoint NAME [--workers 6] [--connections 16] [--read-root ROOT]");
+        if (o.data.empty() || o.endpoint.empty() || !o.workers || o.workers > 64 || !o.connections || o.connections > 64 || o.workers + o.connections > cc::cover_slots)
+            throw std::runtime_error("usage: vrs_ccd [--projects ROOT] [--codex-home DIR] --data DIR --endpoint NAME [--workers 6] [--connections 16] [--read-root ROOT]");
         cc::Daemon daemon(std::move(o)); daemon.start(); daemon.serve(); return 0;
     } catch (const std::exception& e) { std::fprintf(stderr, "vrs_ccd: %.1024s\n", e.what()); return 1; }
 }
