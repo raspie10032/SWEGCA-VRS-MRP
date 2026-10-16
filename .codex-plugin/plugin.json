@@ -1,6 +1,6 @@
 {
   "name": "vrs-lib",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "description": "Restores this thread's exact pre-compaction originals (vrs_restore), byte ranges of its rollout (vrs_read), and searches every Claude Code session and app thread on this PC (vrs_search). SWEGCA VRS-MRP: Verification-Reinforced Synapse, Memory Recovery Plugin.",
   "author": { "name": "raspie10032" },
   "repository": "https://github.com/raspie10032/SWEGCA-VRS-MRP",

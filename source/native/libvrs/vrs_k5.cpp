@@ -1002,7 +1002,7 @@ bool k5_open_of(Store& S, Sess& ss, K5Open& o) {
   return true;
 }
 struct K5Q {  // Row::sh: σ*(y) as the index of its cue in Q(q), -1 none
-  struct Row { uint32_t y; double w; int sh; uint32_t m; int pq = 2, pe = 2, re = 0; uint32_t sq = 0, n = 0; double tau = 0; std::vector<uint32_t> hits; };
+  struct Row { uint32_t y; double w; int sh; uint32_t m; int pq = 2, pe = 2, re = 0; uint32_t sq = 0, n = 0; double tau = 0; std::vector<uint32_t> hits; double wr = 0; int shr = -1; };  // wr, shr: K6 D-s1″ ŵ and σ̂
   std::vector<uint64_t> Q, d; std::vector<std::string> qtext;  // cues, d(h), the text each cue was made of
   uint64_t reads = 0; uint32_t rare = 0, D = 0;
   std::vector<K5Open> open;
@@ -1120,12 +1120,14 @@ void k5_query(Store& S, const std::string& text, const std::vector<std::string>&
   std::vector<uint32_t> Dm, tmp, oh;
   std::vector<uintptr_t> cs;
   std::unordered_map<uint32_t, std::pair<double, int>> best;  // 4판 D-r7′: y -> (the largest w_σ over the approved σ = (h, y) read, the index of its h)
+  std::unordered_map<uint32_t, std::pair<double, int>> best_r;  // K6 D-s1″: the same over the σ whose cue is rare (d ≤ F: P_t(h) has no time cut)
   for (size_t i = 0; i < q.Q.size(); i++) {
     const uint64_t h = q.Q[i];
     tmp.clear(); cs.clear(); k5_below(S, h, UINT64_MAX, K5F, tmp, &cs);
     oh.clear();
     for (size_t j = 0; j < q.open.size(); j++) if (std::binary_search(q.open[j].K.begin(), q.open[j].K.end(), h)) oh.push_back(K5OPEN | uint32_t(j));
     std::sort(oh.begin(), oh.end(), [&](uint32_t a, uint32_t b) { return k5m_kgt(S, q, a, b); });
+    const bool rare = std::min<uint64_t>(k5_len(S, h) + oh.size(), K5F + 1) <= K5F;
     size_t a = 0, b = 0, got = 0;
     while (got < K5F && (a < tmp.size() || b < oh.size())) {
       if (a < tmp.size() && (b >= oh.size() || k5m_kgt(S, q, tmp[a], oh[b]))) {
@@ -1134,6 +1136,7 @@ void k5_query(Store& S, const std::string& text, const std::vector<std::string>&
         if (cl) {  // B-s6: the synapse (h, y) of this element; Q is ascending, so a later h wins only with a larger w
           const PJ p = k5_syn_judge(*cl);
           if (p.st == 0) { auto it = best.find(y); if (it == best.end()) best.emplace(y, std::make_pair(p.lower, int(i))); else if (p.lower > it->second.first) it->second = {p.lower, int(i)}; }
+          if (p.st == 0 && rare) { auto it = best_r.find(y); if (it == best_r.end()) best_r.emplace(y, std::make_pair(p.lower, int(i))); else if (p.lower > it->second.first) it->second = {p.lower, int(i)}; }
         }
       } else Dm.push_back(oh[b++]);
       got++;
@@ -1165,6 +1168,7 @@ void k5_query(Store& S, const std::string& text, const std::vector<std::string>&
     const std::pair<uint32_t, uint8_t> g = inD ? grade[y] : k5_grade(q.Q, q.d, k5m_K(S, q, y));
     K5Q::Row r; r.y = y; r.w = 0; r.sh = -1; r.m = g.first;
     if (const auto it = best.find(y); it != best.end()) { r.w = it->second.first; r.sh = it->second.second; }
+    if (const auto it = best_r.find(y); it != best_r.end()) { r.wr = it->second.first; r.shr = it->second.second; }
     r.pe = r.sh >= 0 ? 0 : pj[g.second].st;  // D-r8′: P(σ*) = A, else P((직, c(q, y)))
     q.R.push_back(std::move(r));
   }
@@ -1367,7 +1371,7 @@ std::string k5_search_json(Store& S, const std::string& text, const std::vector<
   o += "],\"us\":" + std::to_string((long long)us) + "}";
   return o;
 }
-// K6 E-s1′ (VRS_K6_auto_recall_v1.md §6): ρ″ — R in ≺ order without the caller's file, the tier of the first w, at most 5 rows
+// K6 E-s1′ (VRS_K6_auto_recall_v1.md §6, order §9 D-s1″): ρ″ — R without the caller's file, the tier of ŵ*, at most 5 rows
 std::string k5_recall_json(Store& S, const std::string& text, const std::vector<std::string>& W, const std::string& caller) {
   const auto t0 = std::chrono::steady_clock::now();
   EbrGuard guard(S);
@@ -1377,21 +1381,26 @@ std::string k5_recall_json(Store& S, const std::string& text, const std::vector<
   for (size_t i = 0; i < q.Q.size(); i++) { if (i) o += ","; o += "[" + loc_quote(q.qtext[i]) + "," + std::to_string(q.d[i]) + "]"; }
   o += "],\"rows\":[";
   const Sess* own = caller.empty() ? nullptr : get_sess(S, canon_path(S, caller.c_str()), false);
-  // D-s1′: the tier of w* among the rows not of the caller's file, by (dmin ↑, then ≺); dmin = the rarest d of a cue of Q in K(y), cut at 65
-  std::vector<std::pair<uint64_t, const K5Q::Row*>> tier;
-  for (const auto& r : q.R) {
-    if (own && &S.sx(k5m_sg(S, q, r.y)) == own) continue;
-    if (!tier.empty() && r.w != tier[0].second->w) break;
-    const std::vector<uint64_t>& K = k5m_K(S, q, r.y);
-    uint64_t dmin = K5F + 1;
-    for (size_t i = 0; i < q.Q.size(); i++) if (q.d[i] < dmin && std::binary_search(K.begin(), K.end(), q.Q[i])) dmin = q.d[i];
-    tier.push_back({dmin, &r});
-  }
-  std::stable_sort(tier.begin(), tier.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
-  for (size_t n = 0; n < tier.size() && n < 5; n++) {
+  // §9 D-s1″: R″ = the rows not of the caller's file; T″ = the rows of ŵ*; ρ″ = the first 5 of T″ by (m ↓, θₑ ↓, address ↑) (the user's rule)
+  std::vector<const K5Q::Row*> tier;
+  double ws = 0;
+  for (const auto& r : q.R) if (!(own && &S.sx(k5m_sg(S, q, r.y)) == own) && r.wr > ws) ws = r.wr;
+  for (const auto& r : q.R) if (!(own && &S.sx(k5m_sg(S, q, r.y)) == own) && r.wr == ws) tier.push_back(&r);
+  const size_t take = std::min<size_t>(tier.size(), 5);
+  std::partial_sort(tier.begin(), tier.begin() + ptrdiff_t(take), tier.end(), [&](const K5Q::Row* a, const K5Q::Row* b) {
+    if (a->m != b->m) return a->m > b->m;
+    const uint64_t ta = k5m_the(S, q, a->y), tb = k5m_the(S, q, b->y);
+    if (ta != tb) return ta > tb;
+    return k5_addr_less(S, k5m_sg(S, q, a->y), k5m_o0(S, q, a->y), k5m_sg(S, q, b->y), k5m_o0(S, q, b->y));
+  });
+  for (size_t n = 0; n < take; n++) {
     if (n) o += ",";
-    std::string row = k5_row_json(S, q, *tier[n].second, false);
-    row.insert(row.size() - 1, ",\"dmin\":" + std::to_string(tier[n].first));
+    K5Q::Row r = *tier[n]; r.w = r.wr; r.sh = r.shr;  // the header shows ŵ and σ̂
+    const std::vector<uint64_t>& K = k5m_K(S, q, r.y);
+    uint64_t dmin = K5F + 1;  // shown only
+    for (size_t i = 0; i < q.Q.size(); i++) if (q.d[i] < dmin && std::binary_search(K.begin(), K.end(), q.Q[i])) dmin = q.d[i];
+    std::string row = k5_row_json(S, q, r, false);
+    row.insert(row.size() - 1, ",\"dmin\":" + std::to_string(dmin));
     o += row;
   }
   const auto t2 = std::chrono::steady_clock::now();
